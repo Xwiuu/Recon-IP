@@ -1,0 +1,19 @@
+# Pastas de dados e relatórios (NÃO SOBE)
+output/
+captures/
+
+# Logs dos túneis
+*.log
+
+# Binários baixados (ngrok, cloudflared, loclx)
+ngrok
+cloudflared
+loclx
+ngrok.zip
+
+# Arquivo de configuração com senhas (IGNORADO!)
+config.env
+
+# Arquivos temporários do sistema
+.DS_Store
+Thumbs.db
