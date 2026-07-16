@@ -41,7 +41,7 @@ gerar_relatorio() {
 </head>
 <body>
 <div class="container">
-    <h1>🕵️ SUPERRECON v2.0 — Relatório de IP</h1>
+    <h1>🕵️ ReconIP v2.0 — Relatório de IP</h1>
     <div>
         <span class="badge badge-blue">🌐 ${ip}</span>
         <span class="badge badge-green">📅 $(formatar_data)</span>
@@ -54,6 +54,11 @@ gerar_relatorio() {
             <p><strong>Região:</strong> ${REGION:-N/A}</p>
             <p><strong>País:</strong> ${COUNTRY:-N/A}</p>
             <p><strong>ISP:</strong> ${ISP:-N/A}</p>
+            <p><strong>Rede:</strong> ${REDE:-N/A}</p>
+            <p><strong>ASN:</strong> ${ASN:-N/A}</p>
+            <p><strong>Hostname:</strong> ${HOSTNAME:-N/A}</p>
+            <p><strong>Telefone:</strong> ${TELEFONE:-N/A}</p>
+            <p><strong>E-mail:</strong> ${EMAIL:-N/A}</p>
             <p><strong>Coordenadas:</strong> ${LAT:-N/A}, ${LON:-N/A}</p>
             <p><strong>Fuso:</strong> ${TIMEZONE:-N/A}</p>
         </div>
@@ -71,8 +76,21 @@ gerar_relatorio() {
 
     <div class="card">
         <h3>🏙️ Street View</h3>
-        <img class="street-img" src="street.jpg" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22300%22%3E%3Crect fill=%22%23161b22%22 width=%22600%22 height=%22300%22/%3E%3Ctext fill=%22%2358a6ff%22 x=%22300%22 y=%22150%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2220%22%3EStreet View Indisponível%3C/text%3E%3C/svg%3E'" alt="Street View">
+        <img class="street-img" src="street.jpg" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22300%22%3E%3Crect fill=%22%23161b22%22 width=%22600%22 height=%22300%22/%3E%3Ctext fill=%22%2358a6ff%22 x=%22300%22 y=%22140%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2220%22%3E🌍 Street View%3C/text%3E%3Ctext fill=%22%238b949e%22 x=%22300%22 y=%22170%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2214%22%3EIndisponível no momento%3C/text%3E%3Ctext fill=%22%2330363d%22 x=%22300%22 y=%22200%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2212%22%3EConfigure sua chave no config.env%3C/text%3E%3C/svg%3E'" alt="Street View">
         <p><a href="${LINK_STREET:-#}" target="_blank">🔗 Ver no Google Street View 360°</a></p>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>📡 Latência</h3>
+            <p><strong>Ping:</strong> ${PING:-Indisponível}</p>
+        </div>
+        <div class="card">
+            <h3>⚠️ Reputação</h3>
+            <p><strong>Abuse Score:</strong> ${ABUSE_SCORE:-N/A}</p>
+            <p><strong>Total Reports:</strong> ${ABUSE_REPORTS:-N/A}</p>
+            <p><strong>Último Report:</strong> ${ABUSE_LAST:-N/A}</p>
+        </div>
     </div>
 
     <div class="card">
@@ -98,7 +116,7 @@ done)
     </div>
 
     <div class="footer">
-        ⚙️ Gerado por SUPERRECON v2.0 em $(formatar_data)
+        ⚙️ Gerado por ReconIP v2.0 em $(formatar_data)
     </div>
 </div>
 </body>
