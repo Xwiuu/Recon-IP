@@ -1,5 +1,5 @@
 #!/bin/bash
-# abuse.sh - Consulta de reputacao AbuseIPDB (opcional)
+# abuse.sh - Consulta de reputacao AbuseIPDB (opcional, pula sem chave ou internet)
 
 check_reputation() {
     local ip=$1
@@ -12,6 +12,12 @@ check_reputation() {
 
     if [ -z "$key" ]; then
         log_info "ABUSEIPDB_KEY nao configurada. Pulando reputacao."
+        export ABUSE_SCORE ABUSE_REPORTS ABUSE_LAST
+        return 0
+    fi
+
+    if ! tem_internet; then
+        log_warning "Sem internet. Pulando consulta AbuseIPDB."
         export ABUSE_SCORE ABUSE_REPORTS ABUSE_LAST
         return 0
     fi

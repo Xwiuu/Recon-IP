@@ -6,7 +6,47 @@ RED='\033[1;31m'
 GREEN='\033[1;32m'
 CYAN='\033[1;36m'
 YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+MAGENTA='\033[1;35m'
 NC='\033[0m' # No Color
+
+# Variaveis globais de progresso
+PROGRESS_STEPS=0
+PROGRESS_CURRENT=0
+PROGRESS_LABELS=()
+PROGRESS_BAR_SIZE=20
+
+init_progress() {
+    PROGRESS_CURRENT=0
+    PROGRESS_LABELS=("$@")
+    PROGRESS_STEPS=${#PROGRESS_LABELS[@]}
+    draw_progress 0 "${PROGRESS_LABELS[0]}"
+}
+
+draw_progress() {
+    local pct=$1
+    local label=$2
+    local filled=$((pct * PROGRESS_BAR_SIZE / 100))
+    local empty=$((PROGRESS_BAR_SIZE - filled))
+    local bar="["
+    for ((i=0; i<filled; i++)); do bar+="█"; done
+    for ((i=0; i<empty; i++)); do bar+="░"; done
+    bar+="]"
+    printf "\r  ${CYAN}%s${NC} ${GREEN}%3d%%${NC} ${BLUE}%s${NC}    " "$bar" "$pct" "$label"
+}
+
+update_progress() {
+    local step=$1
+    local label=$2
+    PROGRESS_CURRENT=$step
+    local pct=$((step * 100 / PROGRESS_STEPS))
+    draw_progress "$pct" "$label"
+}
+
+finish_progress() {
+    draw_progress 100 "Concluido"
+    echo
+}
 
 # Valida se é um IPv4 válido
 validar_ip() {
@@ -67,23 +107,43 @@ log_info() {
 # ========== PROCESSAR IP (SCAN COMPLETO) ==========
 processar_ip() {
     local ip=$1
+    local dominio=${2:-}
     if ! validar_ip "$ip"; then
         log_error "IP invalido: $ip"
         return 1
     fi
 
+    local start_time=$SECONDS
+
     log_info "Iniciando scan para IP: $ip"
     local pasta=$(criar_pasta_recon "$ip")
     log_success "Pasta criada: $pasta"
 
+    init_progress "GeoIP" "IPInfo" "Clima" "Portas" "Banners" "Whois" "Telemetria" "Rede" "Ping" "StreetView" "Reputacao" "Relatorio" "Resumo" "Notificacao"
+    update_progress 1 "GeoIP..."
     geo_lookup "$ip" "$pasta"
     [ $? -ne 0 ] && log_error "Geo falhou, continuando mesmo assim..."
 
+    update_progress 2 "IPInfo..."
     buscar_ipinfo "$ip" "$pasta"
 
+    update_progress 3 "Clima..."
     get_weather "$LAT" "$LON" "$pasta"
+
+    update_progress 4 "Portas..."
     scan_ports "$ip" "$pasta"
+
+    update_progress 5 "Banners..."
+    grab_banner "$ip" "$pasta"
+
+    update_progress 6 "Whois..."
     whois_lookup "$ip" "$pasta"
+
+    update_progress 7 "Telemetria..."
+    check_telemetry "$ip" "$pasta" "$dominio"
+
+    update_progress 8 "Rede..."
+    network_recon "$ip" "$pasta" "$dominio"
 
     # Fallback ASN do whois_api.json (se geo.json nao tiver)
     if [ "${ASN:-N/A}" = "N/A" ] && [ -f "${pasta}/whois_api.json" ]; then
@@ -96,13 +156,19 @@ processar_ip() {
         fi
     fi
 
+    update_progress 9 "Ping..."
     ping_ip "$ip" "$pasta"
 
+    update_progress 10 "StreetView..."
     get_streetview "$LAT" "$LON" "$pasta"
 
+    update_progress 11 "Reputacao..."
     check_reputation "$ip" "$pasta"
+
+    update_progress 12 "Relatorio..."
     gerar_relatorio "$ip" "$pasta"
 
+    update_progress 13 "Resumo..."
     cat > "$pasta/resumo.txt" <<EOF
 IP: $ip
 Data: $(formatar_data)
@@ -116,12 +182,33 @@ Hostname: ${HOSTNAME:-N/A}
 ASN: ${ASN:-N/A}
 Rede: ${REDE:-N/A}
 Ping: ${PING:-N/A}
+Servidor Web: ${SERVER_INFO:-N/A}
+Titulo: ${TITLE_INFO:-N/A}
+SSL: ${SSL_ISSUER:-N/A} - ${SSL_EXPIRY:-N/A}
+Favicon Hash: ${FAVICON_HASH:-N/A}
+Safe Browsing: ${SAFEBROWSING_MALICIOUS:-N/A}
+DNSBL: ${DNSBL_LISTED:-N/A}
+VirusTotal: ${VT_MALICIOUS:-N/A}/${VT_TOTAL:-N/A}
+Vizinhos /24: ${VIZINHOS_COUNT:-N/A}
 Abuse Score: ${ABUSE_SCORE:-N/A}
 Abuse Reports: ${ABUSE_REPORTS:-N/A}
 EOF
 
+    update_progress 14 "Notificacao..."
     send_notifications "$ip" "$pasta"
-    log_success "Scan finalizado! Resumo salvo em $pasta/resumo.txt"
+
+    finish_progress
+
+    local elapsed=$((SECONDS - start_time))
+    local elapsed_fmt
+    if [ "$elapsed" -lt 60 ]; then
+        elapsed_fmt="${elapsed}s"
+    else
+        elapsed_fmt="$((elapsed / 60))m $((elapsed % 60))s"
+    fi
+
+    echo
+    log_success "Scan finalizado em ${elapsed_fmt}! Resumo salvo em $pasta/resumo.txt"
     log_success "Arquivos gerados:"
     ls -la "$pasta"
 }
@@ -215,6 +302,39 @@ ping_ip() {
         log_warning "Ping: comando nao disponivel"
     fi
     export PING
+}
+
+# ========== VERIFICA CONEXAO COM INTERNET ==========
+tem_internet() {
+    ping -c 1 -W 2 8.8.8.8 &>/dev/null && return 0
+    ping -c 1 -W 2 1.1.1.1 &>/dev/null && return 0
+    curl -s --head --connect-timeout 3 http://www.google.com &>/dev/null && return 0
+    return 1
+}
+
+# ========== EXECUTA COM FALLBACK LOCAL ==========
+tentar_api_ou_local() {
+    local nome=$1
+    local func_api=$2
+    local func_local=$3
+    shift 3
+
+    if tem_internet; then
+        if $func_api "$@" 2>/dev/null; then
+            return 0
+        fi
+        log_warning "API $nome falhou. Tentando fallback local..."
+    else
+        log_warning "Sem internet. Usando fallback local para $nome..."
+    fi
+
+    if $func_local "$@" 2>/dev/null; then
+        log_success "Fallback local $nome executado com sucesso."
+        return 0
+    fi
+
+    log_error "Falha total em $nome (online e local)."
+    return 1
 }
 
 # ========== VERIFICA DEPENDENCIAS ==========

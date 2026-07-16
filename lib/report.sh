@@ -80,6 +80,27 @@ gerar_relatorio() {
         <p><a href="${LINK_STREET:-#}" target="_blank">🔗 Ver no Google Street View 360°</a></p>
     </div>
 
+    <div class="card">
+        <h3>🌐 Banner Grabbing</h3>
+        <p><strong>Servidor:</strong> ${SERVER_INFO:-N/A}</p>
+        <p><strong>Título:</strong> ${TITLE_INFO:-N/A}</p>
+        <p><strong>SSL Emissor:</strong> ${SSL_ISSUER:-N/A}</p>
+        <p><strong>SSL Expira:</strong> ${SSL_EXPIRY:-N/A}</p>
+        <p><strong>SSL CN:</strong> ${SSL_CN:-N/A}</p>
+        <p><strong>SSH Banner:</strong> <code>${SSH_BANNER:-N/A}</code></p>
+        <p><strong>FTP Banner:</strong> <code>${FTP_BANNER:-N/A}</code></p>
+        <p><strong>Favicon Hash:</strong> <code>${FAVICON_HASH:-N/A}</code></p>
+    </div>
+
+    <div class="card">
+        <h3>🧬 Telemetria de Segurança</h3>
+        <p><strong>Safe Browsing:</strong> ${SAFEBROWSING_MALICIOUS:-N/A}</p>
+        <p><strong>DNSBL:</strong> ${DNSBL_LISTED:-N/A}</p>
+        <p><strong>DNSBL Fontes:</strong> ${DNSBL_SOURCES:-N/A}</p>
+        <p><strong>VirusTotal:</strong> ${VT_MALICIOUS:-N/A}/${VT_TOTAL:-N/A} (${VT_SCORE:-N/A}%)</p>
+        <p><strong>URLScan:</strong> <a href="${URLSCAN_URL:-#}" target="_blank">${URLSCAN_URL:-N/A}</a></p>
+    </div>
+
     <div class="grid">
         <div class="card">
             <h3>📡 Latência</h3>
@@ -91,6 +112,17 @@ gerar_relatorio() {
             <p><strong>Total Reports:</strong> ${ABUSE_REPORTS:-N/A}</p>
             <p><strong>Último Report:</strong> ${ABUSE_LAST:-N/A}</p>
         </div>
+    </div>
+
+    <div class="card">
+        <h3>🗺️ Reconhecimento de Rede</h3>
+        <p><strong>Vizinhos /24:</strong> ${VIZINHOS_COUNT:-N/A}</p>
+        <pre>${VIZINHOS_LIST:-N/A}</pre>
+        <p><strong>Traceroute:</strong></p>
+        <pre>${TRACEROUTE_HOPS:-N/A}</pre>
+        <p><strong>Domínio Criado em:</strong> ${DOMAIN_CREATED:-N/A}</p>
+        <p><strong>Admin:</strong> ${DOMAIN_ADMIN:-N/A}</p>
+        <p><strong>Registro:</strong> ${DOMAIN_REGISTRAR:-N/A}</p>
     </div>
 
     <div class="card">

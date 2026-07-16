@@ -16,6 +16,9 @@ source lib/report.sh
 source lib/tunnels.sh
 source lib/abuse.sh
 source lib/notify.sh
+source lib/banners.sh
+source lib/telemetry.sh
+source lib/network.sh
 
 # Garante que jq esta no PATH (Windows via winget)
 if ! command -v jq &>/dev/null; then
@@ -88,7 +91,7 @@ opcao_scan_url() {
         return
     fi
     echo -e "  ${GREEN}DNS resolvido: $ip${NC}"
-    processar_ip "$ip"
+    processar_ip "$ip" "$url"
     echo -e "  ${GREEN}Scan concluido! Relatorio: output/recon_$ip/report.html${NC}"
     printf "  Pressione Enter para continuar..."
     read -r
@@ -138,7 +141,8 @@ Dependencias:
 
 Modulos carregados de lib/:
   core.sh, geo.sh, ports.sh, weather.sh, whois.sh,
-  streetview.sh, report.sh, tunnels.sh, notify.sh
+  streetview.sh, report.sh, tunnels.sh, notify.sh,
+  banners.sh, telemetry.sh, network.sh
 EOF
 }
 
