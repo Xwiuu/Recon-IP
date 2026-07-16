@@ -79,7 +79,18 @@ gerar_relatorio() {
         <img class="street-img" src="street.jpg" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22300%22%3E%3Crect fill=%22%23161b22%22 width=%22600%22 height=%22300%22/%3E%3Ctext fill=%22%2358a6ff%22 x=%22300%22 y=%22140%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2220%22%3E🌍 Street View%3C/text%3E%3Ctext fill=%22%238b949e%22 x=%22300%22 y=%22170%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2214%22%3EIndisponível no momento%3C/text%3E%3Ctext fill=%22%2330363d%22 x=%22300%22 y=%22200%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2212%22%3EConfigure sua chave no config.env%3C/text%3E%3C/svg%3E'" alt="Street View">
         <p><a href="${LINK_STREET:-#}" target="_blank">🔗 Ver no Google Street View 360°</a></p>
     </div>
+EOF
 
+    # Banner Grabbing (só exibe se houver dados)
+    if [ -n "${SERVER_INFO}" ] && [ "${SERVER_INFO}" != "N/A" ] || \
+       [ -n "${TITLE_INFO}" ] && [ "${TITLE_INFO}" != "N/A" ] || \
+       [ -n "${SSL_ISSUER}" ] && [ "${SSL_ISSUER}" != "N/A" ] || \
+       [ -n "${SSL_EXPIRY}" ] && [ "${SSL_EXPIRY}" != "N/A" ] || \
+       [ -n "${SSL_CN}" ] && [ "${SSL_CN}" != "N/A" ] || \
+       [ -n "${SSH_BANNER}" ] && [ "${SSH_BANNER}" != "N/A" ] || \
+       [ -n "${FTP_BANNER}" ] && [ "${FTP_BANNER}" != "N/A" ] || \
+       [ -n "${FAVICON_HASH}" ] && [ "${FAVICON_HASH}" != "N/A" ]; then
+        cat >> "${pasta}/report.html" <<EOF
     <div class="card">
         <h3>🌐 Banner Grabbing</h3>
         <p><strong>Servidor:</strong> ${SERVER_INFO:-N/A}</p>
@@ -91,32 +102,18 @@ gerar_relatorio() {
         <p><strong>FTP Banner:</strong> <code>${FTP_BANNER:-N/A}</code></p>
         <p><strong>Favicon Hash:</strong> <code>${FAVICON_HASH:-N/A}</code></p>
     </div>
+EOF
+    fi
 
+    cat >> "${pasta}/report.html" <<EOF
     <div class="card">
-        <h3>🧬 Telemetria de Segurança</h3>
-        <p><strong>Safe Browsing:</strong> ${SAFEBROWSING_MALICIOUS:-N/A}</p>
-        <p><strong>DNSBL:</strong> ${DNSBL_LISTED:-N/A}</p>
-        <p><strong>DNSBL Fontes:</strong> ${DNSBL_SOURCES:-N/A}</p>
-        <p><strong>VirusTotal:</strong> ${VT_MALICIOUS:-N/A}/${VT_TOTAL:-N/A} (${VT_SCORE:-N/A}%)</p>
-        <p><strong>URLScan:</strong> <a href="${URLSCAN_URL:-#}" target="_blank">${URLSCAN_URL:-N/A}</a></p>
-    </div>
-
-    <div class="grid">
-        <div class="card">
-            <h3>📡 Latência</h3>
-            <p><strong>Ping:</strong> ${PING:-Indisponível}</p>
-        </div>
-        <div class="card">
-            <h3>⚠️ Reputação</h3>
-            <p><strong>Abuse Score:</strong> ${ABUSE_SCORE:-N/A}</p>
-            <p><strong>Total Reports:</strong> ${ABUSE_REPORTS:-N/A}</p>
-            <p><strong>Último Report:</strong> ${ABUSE_LAST:-N/A}</p>
-        </div>
+        <h3>📡 Latência</h3>
+        <p><strong>Ping:</strong> ${PING:-Indisponível}</p>
     </div>
 
     <div class="card">
         <h3>🗺️ Reconhecimento de Rede</h3>
-        <p><strong>Vizinhos /24:</strong> ${VIZINHOS_COUNT:-N/A}</p>
+        <p><strong>Vizinhos /24:</strong> $(if [ "${VIZINHOS_COUNT:-0}" -eq 0 ]; then echo "Nenhum host vivo encontrado"; else echo "${VIZINHOS_COUNT} hosts encontrados"; fi)</p>
         <pre>${VIZINHOS_LIST:-N/A}</pre>
         <p><strong>Traceroute:</strong></p>
         <pre>${TRACEROUTE_HOPS:-N/A}</pre>

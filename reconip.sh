@@ -14,10 +14,8 @@ source lib/whois.sh
 source lib/streetview.sh
 source lib/report.sh
 source lib/tunnels.sh
-source lib/abuse.sh
 source lib/notify.sh
 source lib/banners.sh
-source lib/telemetry.sh
 source lib/network.sh
 
 # Garante que jq esta no PATH (Windows via winget)
@@ -142,7 +140,7 @@ Dependencias:
 Modulos carregados de lib/:
   core.sh, geo.sh, ports.sh, weather.sh, whois.sh,
   streetview.sh, report.sh, tunnels.sh, notify.sh,
-  banners.sh, telemetry.sh, network.sh
+  banners.sh, network.sh
 EOF
 }
 

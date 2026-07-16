@@ -119,7 +119,7 @@ processar_ip() {
     local pasta=$(criar_pasta_recon "$ip")
     log_success "Pasta criada: $pasta"
 
-    init_progress "GeoIP" "IPInfo" "Clima" "Portas" "Banners" "Whois" "Telemetria" "Rede" "Ping" "StreetView" "Reputacao" "Relatorio" "Resumo" "Notificacao"
+    init_progress "GeoIP" "IPInfo" "Clima" "Portas" "Banners" "Whois" "Rede" "Ping" "StreetView" "Relatorio" "Resumo" "Notificacao"
     update_progress 1 "GeoIP..."
     geo_lookup "$ip" "$pasta"
     [ $? -ne 0 ] && log_error "Geo falhou, continuando mesmo assim..."
@@ -139,10 +139,7 @@ processar_ip() {
     update_progress 6 "Whois..."
     whois_lookup "$ip" "$pasta"
 
-    update_progress 7 "Telemetria..."
-    check_telemetry "$ip" "$pasta" "$dominio"
-
-    update_progress 8 "Rede..."
+    update_progress 7 "Rede..."
     network_recon "$ip" "$pasta" "$dominio"
 
     # Fallback ASN do whois_api.json (se geo.json nao tiver)
@@ -156,19 +153,16 @@ processar_ip() {
         fi
     fi
 
-    update_progress 9 "Ping..."
+    update_progress 8 "Ping..."
     ping_ip "$ip" "$pasta"
 
-    update_progress 10 "StreetView..."
+    update_progress 9 "StreetView..."
     get_streetview "$LAT" "$LON" "$pasta"
 
-    update_progress 11 "Reputacao..."
-    check_reputation "$ip" "$pasta"
-
-    update_progress 12 "Relatorio..."
+    update_progress 10 "Relatorio..."
     gerar_relatorio "$ip" "$pasta"
 
-    update_progress 13 "Resumo..."
+    update_progress 11 "Resumo..."
     cat > "$pasta/resumo.txt" <<EOF
 IP: $ip
 Data: $(formatar_data)
@@ -186,15 +180,10 @@ Servidor Web: ${SERVER_INFO:-N/A}
 Titulo: ${TITLE_INFO:-N/A}
 SSL: ${SSL_ISSUER:-N/A} - ${SSL_EXPIRY:-N/A}
 Favicon Hash: ${FAVICON_HASH:-N/A}
-Safe Browsing: ${SAFEBROWSING_MALICIOUS:-N/A}
-DNSBL: ${DNSBL_LISTED:-N/A}
-VirusTotal: ${VT_MALICIOUS:-N/A}/${VT_TOTAL:-N/A}
 Vizinhos /24: ${VIZINHOS_COUNT:-N/A}
-Abuse Score: ${ABUSE_SCORE:-N/A}
-Abuse Reports: ${ABUSE_REPORTS:-N/A}
 EOF
 
-    update_progress 14 "Notificacao..."
+    update_progress 12 "Notificacao..."
     send_notifications "$ip" "$pasta"
 
     finish_progress

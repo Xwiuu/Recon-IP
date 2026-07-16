@@ -25,7 +25,6 @@ source lib/report.sh
 source lib/tunnels.sh
 source lib/notify.sh
 source lib/banners.sh
-source lib/telemetry.sh
 source lib/network.sh
 
 # ========== HELP ==========
@@ -48,7 +47,6 @@ Modo Scan:
   - Baixa Street View, gera mapa interativo
   - Escaneia portas comuns
   - Banner grabbing (HTTP, SSH, SSL, favicon)
-  - Telemetria de seguranca (VT, DNSBL, Safe Browsing)
   - Reconhecimento de rede (/24, traceroute)
   - Gera relatório HTML e envia notificação
 

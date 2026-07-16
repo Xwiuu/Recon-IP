@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # network.sh - Reconhecimento de Rede (/24 Scan, Traceroute, Whois Dominio)
 
 network_recon() {
