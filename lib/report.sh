@@ -277,6 +277,18 @@ SUB
 ROB
     fi)
 
+    $(if [ -n "${CMS_NAME}" ] && [ "${CMS_NAME}" != "N/A" ]; then
+    cat <<CMSH
+    <div class="card">
+        <h3>📦 CMS Detectado</h3>
+        <p><strong>CMS:</strong> ${CMS_NAME}</p>
+        <p><strong>Versão:</strong> ${CMS_VERSION:-N/A}</p>
+        <p><strong>Tema:</strong> ${CMS_THEME:-N/A}</p>
+        <p><strong>Plugins:</strong> ${CMS_PLUGINS:-N/A}</p>
+    </div>
+CMSH
+    fi)
+
     $(if { [ -n "${LOG4J_VULN}" ] && [ "${LOG4J_VULN}" != "N/A" ] && [ "${LOG4J_VULN}" != "Nao testado" ]; } || \
        { [ -n "${HEARTBLEED_VULN}" ] && [ "${HEARTBLEED_VULN}" != "N/A" ] && [ "${HEARTBLEED_VULN}" != "Nao testado" ]; } || \
        { [ -n "${SHELLSHOCK_VULN}" ] && [ "${SHELLSHOCK_VULN}" != "N/A" ] && [ "${SHELLSHOCK_VULN}" != "Nao testado" ]; } || \
@@ -319,6 +331,15 @@ SSL
 PTR
     fi)
 
+    $(if [ -n "${REVERSE_DOMAINS}" ] && [ "${REVERSE_DOMAINS}" != "N/A" ]; then
+    cat <<REV
+    <div class="card">
+        <h3>🔁 Reverse IP — Domínios no Mesmo Servidor</h3>
+        <pre>${REVERSE_DOMAINS}</pre>
+    </div>
+REV
+    fi)
+
     $(if [ -n "${SHODAN_DATA}" ] && [ "${SHODAN_DATA}" != "N/A" ]; then
     cat <<SHO
     <div class="card">
@@ -326,6 +347,39 @@ PTR
         <pre>$(cat "${pasta}/shodan.txt" 2>/dev/null | head -20)</pre>
     </div>
 SHO
+    fi)
+
+    $(if { [ -n "${ABUSE_SCORE}" ] && [ "${ABUSE_SCORE}" != "N/A" ] && [ "${ABUSE_SCORE}" != "null" ]; } || \
+       { [ -n "${ABUSE_REPORTS}" ] && [ "${ABUSE_REPORTS}" != "N/A" ] && [ "${ABUSE_REPORTS}" != "null" ]; }; then
+    cat <<ABU
+    <div class="card">
+        <h3>⚠️ Reputação (AbuseIPDB)</h3>
+        <p><strong>Abuse Score:</strong> <span class="$(echo "${ABUSE_SCORE}" | awk '{if ($1 > 50) print "badge-red"; else if ($1 > 0) print "badge-purple"; else print "badge-green"}')">${ABUSE_SCORE:-N/A}%</span></p>
+        <p><strong>Total de Reports:</strong> ${ABUSE_REPORTS:-N/A}</p>
+        <p><strong>Último Report:</strong> ${ABUSE_LAST:-Nunca}</p>
+        $(if [ "${ABUSE_SCORE:-0}" -gt 0 ] 2>/dev/null; then echo "<p><a href=\"https://www.abuseipdb.com/check/${ip}\" target=\"_blank\">🔗 Ver detalhes no AbuseIPDB</a></p>"; fi)
+    </div>
+ABU
+    fi)
+
+    $(if [ -n "${MTR_REPORT}" ] && [ "${MTR_REPORT}" != "N/A" ]; then
+    cat <<MTRC
+    <div class="card">
+        <h3>📊 Análise de Tráfego (MTR)</h3>
+        <p><strong>Resumo:</strong> ${MTR_SUMMARY:-N/A}</p>
+        <pre>$(echo "${MTR_REPORT}" | head -30)</pre>
+    </div>
+MTRC
+    fi)
+
+    $(if [ -n "${CLOUD_PROVIDER}" ] && [ "${CLOUD_PROVIDER}" != "N/A" ]; then
+    cat <<CLD
+    <div class="card">
+        <h3>☁️ Provedor de Nuvem</h3>
+        <p><strong>Provedor:</strong> ${CLOUD_PROVIDER}</p>
+        <p><strong>Detalhes:</strong> ${CLOUD_DETAILS:-N/A}</p>
+    </div>
+CLD
     fi)
 
     $(if [ "${MONITOR_CHANGED:-0}" -eq 1 ]; then

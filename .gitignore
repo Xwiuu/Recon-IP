@@ -1,19 +1,74 @@
-# Pastas de dados e relatórios (NÃO SOBE)
+# ─── CONFIG & SEGREDOS ─────────────────────────────────────────
+config.env
+*.key
+*.pem
+*.cert
+*.crt
+secrets/
+
+# ─── DIRETÓRIOS DE SAÍDA ──────────────────────────────────────
 output/
 captures/
+logs/
+reports/
+temp/
+tmp/
 
-# Logs dos túneis
+# ─── BINÁRIOS DE TÚNEIS ───────────────────────────────────────
+ngrok*
+cloudflared*
+loclx*
+frpc*
+frps*
+
+# ─── LOGS & ARQUIVOS TEMPORÁRIOS ──────────────────────────────
 *.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.swn
+*.orig
+*.part
 
-# Binários baixados (ngrok, cloudflared, loclx)
-ngrok
-cloudflared
-loclx
-ngrok.zip
+# ─── PHP & SERVER ──────────────────────────────────────────────
+php.log
+php_errors.log
+*.pid
 
-# Arquivo de configuração com senhas (IGNORADO!)
-config.env
-
-# Arquivos temporários do sistema
+# ─── SISTEMA OPERACIONAL ──────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
+*.lnk
+$RECYCLE.BIN/
+
+# ─── IDE & EDITOR ──────────────────────────────────────────────
+.idea/
+.vscode/
+*.sublime-*
+*.code-workspace
+.vs/
+.settings/
+
+# ─── GIT ──────────────────────────────────────────────────────
+*.patch
+*.diff
+
+# ─── DOCS (excluir assets exceto banner.txt) ──────────────────
+assets/*.png
+assets/*.jpg
+assets/*.gif
+assets/*.svg
+!assets/banner.txt
+
+# ─── OUTROS ───────────────────────────────────────────────────
+*.zip
+*.tar
+*.gz
+*.7z
+*.rar
+__pycache__/
+node_modules/
+vendor/
+.coverage

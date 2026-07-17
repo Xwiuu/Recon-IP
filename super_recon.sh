@@ -44,6 +44,9 @@ source lib/earth_integration.sh
 source lib/cep.sh
 source lib/dorks.sh
 source lib/pwned.sh
+source lib/abuse.sh
+source lib/cloud.sh
+source lib/cms.sh
 
 # ========== HELP ==========
 mostrar_help() {

@@ -41,6 +41,7 @@ export_json() {
     },
     "dns": {
         "ptr": "$PTR_RECORD",
+        "reverse_ip": "$(echo "${REVERSE_DOMAINS:-N/A}" | head -10 | tr '\n' ';')",
         "spf": "$EMAIL_SPF",
         "dkim": "$EMAIL_DKIM",
         "dmarc": "$EMAIL_DMARC",
@@ -66,6 +67,21 @@ export_json() {
         "sitemap": "$ROBOTS_SITEMAP"
     },
     "shodan": "$SHODAN_DATA",
+    "cloud": {
+        "provider": "${CLOUD_PROVIDER:-N/A}",
+        "details": "${CLOUD_DETAILS:-N/A}"
+    },
+    "cms": {
+        "name": "${CMS_NAME:-N/A}",
+        "version": "${CMS_VERSION:-N/A}",
+        "theme": "${CMS_THEME:-N/A}",
+        "plugins": "${CMS_PLUGINS:-N/A}"
+    },
+    "abuseipdb": {
+        "score": ${ABUSE_SCORE:-0},
+        "reports": ${ABUSE_REPORTS:-0},
+        "ultimo_report": "${ABUSE_LAST:-Nunca}"
+    },
     "pwned": {
         "count": ${PWNED_COUNT:-0},
         "breaches": "${PWNED_BREACHES:-N/A}"
@@ -92,8 +108,9 @@ export_csv() {
     portas_abertas=$(grep "ABERTA" "${pasta}/portas.txt" 2>/dev/null | sed 's/.*\([0-9]\+\)\/tcp.*/\1/' | paste -sd '|' -)
 
     local pwned_csv="${PWNED_BREACHES:-N/A}"
-    echo "IP,Tipo,Data,Cidade,Regiao,Pais,ISP,ASN,Hostname,Lat,Lon,Clima,Portas_Abertas,Servidor,Titulo,PTR,SPF,DMARC,Log4j,Heartbleed,Shellshock,Subdominios,CEP_Cidade,Pwned" > "$csv_file"
-    echo "\"$ip\",\"${IP_TYPE:-IPv4}\",\"$(date)\",\"$CITY\",\"$REGION\",\"$COUNTRY\",\"$ISP\",\"$ASN\",\"$HOSTNAME\",\"$LAT\",\"$LON\",\"$CLIMA\",\"$portas_abertas\",\"$SERVER_INFO\",\"$TITLE_INFO\",\"$PTR_RECORD\",\"$EMAIL_SPF\",\"$EMAIL_DMARC\",\"$LOG4J_VULN\",\"$HEARTBLEED_VULN\",\"$SHELLSHOCK_VULN\",\"$SUBDOMAIN_COUNT\",\"${CEP_CIDADE:-N/A}\",\"$pwned_csv\"" >> "$csv_file"
+    local rev_ip_csv=$(echo "${REVERSE_DOMAINS:-N/A}" | head -3 | tr '\n' '|')
+    echo "IP,Tipo,Data,Cidade,Regiao,Pais,ISP,ASN,Hostname,Lat,Lon,Clima,Portas_Abertas,Servidor,Titulo,PTR,ReverseIP,SPF,DMARC,Log4j,Heartbleed,Shellshock,Subdominios,CEP_Cidade,Pwned,AbuseScore,AbuseReports,CloudProvider,CMS" > "$csv_file"
+    echo "\"$ip\",\"${IP_TYPE:-IPv4}\",\"$(date)\",\"$CITY\",\"$REGION\",\"$COUNTRY\",\"$ISP\",\"$ASN\",\"$HOSTNAME\",\"$LAT\",\"$LON\",\"$CLIMA\",\"$portas_abertas\",\"$SERVER_INFO\",\"$TITLE_INFO\",\"$PTR_RECORD\",\"$rev_ip_csv\",\"$EMAIL_SPF\",\"$EMAIL_DMARC\",\"$LOG4J_VULN\",\"$HEARTBLEED_VULN\",\"$SHELLSHOCK_VULN\",\"$SUBDOMAIN_COUNT\",\"${CEP_CIDADE:-N/A}\",\"$pwned_csv\",\"${ABUSE_SCORE:-N/A}\",\"${ABUSE_REPORTS:-N/A}\",\"${CLOUD_PROVIDER:-N/A}\",\"${CMS_NAME:-N/A} ${CMS_VERSION:-}\"" >> "$csv_file"
     log_success "CSV exportado: $csv_file"
 }
 
@@ -168,6 +185,14 @@ ${portas_md:-Nenhuma porta aberta encontrada.}
 | TLS 1.1 | ${SSL_TLS11:-N/A} |
 | TLS 1.2 | ${SSL_TLS12:-N/A} |
 | TLS 1.3 | ${SSL_TLS13:-N/A} |
+
+## ⚠️ Reputacao
+
+| Campo | Valor |
+|-------|-------|
+| Abuse Score | ${ABUSE_SCORE:-N/A}% |
+| Abuse Reports | ${ABUSE_REPORTS:-N/A} |
+| Ultimo Report | ${ABUSE_LAST:-Nunca} |
 
 ## 💥 Vulnerabilidades
 

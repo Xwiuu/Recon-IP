@@ -151,11 +151,7 @@ processar_ip() {
     buscar_ipinfo "$ip" "$pasta"
 
     update_progress 3 "CEP..."
-    if [ -n "${ZIP:-}" ] && [ "${ZIP}" != "N/A" ] && [ "${ZIP}" != "null" ]; then
-        query_cep "$ZIP" "$pasta"
-    else
-        log_debug "Sem CEP disponivel. Pulando."
-    fi
+    buscar_cep_por_ip "$ip" "$pasta"
 
     update_progress 4 "Clima..."
     get_weather "$LAT" "$LON" "$pasta"
@@ -198,6 +194,8 @@ processar_ip() {
 
         update_progress 13 "RobotsTXT..."
         check_robots "$ip" "$dominio" "$pasta"
+
+        detect_cms "$dominio" "$pasta"
     fi
 
     if [ "$has_domain" -eq 1 ]; then
@@ -279,6 +277,8 @@ processar_ip() {
 
         update_progress $step_reverse_dns "Reverse DNS..."
         reverse_dns_lookup "$ip" "$pasta"
+
+        analyze_mtr "$ip" "$pasta"
     fi
 
     # Fallback ASN do whois_api.json (se geo.json nao tiver)
@@ -291,6 +291,8 @@ processar_ip() {
             log_success "ASN obtido do WHOIS API: $ASN"
         fi
     fi
+
+    detect_cloud "$ip" "$pasta"
 
     update_progress $step_ping "Ping..."
     ping_ip "$ip" "$pasta"
@@ -331,6 +333,7 @@ processar_ip() {
 
     [ -n "${SHODAN_API_KEY:-}" ] && query_shodan "$ip" "$pasta"
     [ -n "${CENSYS_API_ID:-}" ] && query_censys "$ip" "$pasta"
+    check_reputation "$ip" "$pasta"
     [ "$MODO_MONITOR_ATIVO" -eq 1 ] && check_monitor "$ip" "$pasta"
 
     update_progress $step_report "Relatorio..."
@@ -382,6 +385,10 @@ UDP Abertas: ${udp_ports:-N/A}
 CVEs Encontrados: ${cve_count:-0}
 Subdominios: ${SUBDOMAIN_COUNT:-0}
 PTR: ${PTR_RECORD:-N/A}
+Reverse IP: $(echo "${REVERSE_DOMAINS:-N/A}" | head -3 | tr '\n' '; ')
+MTR: ${MTR_SUMMARY:-N/A}
+Cloud: ${CLOUD_PROVIDER:-N/A}
+CMS: ${CMS_NAME:-N/A} ${CMS_VERSION:-}
 TLS 1.0: ${SSL_TLS10:-N/A}
 TLS 1.1: ${SSL_TLS11:-N/A}
 TLS 1.2: ${SSL_TLS12:-N/A}
@@ -403,6 +410,9 @@ CEP Cidade: ${CEP_CIDADE:-N/A}
 CEP Estado: ${CEP_ESTADO:-N/A}
 Vazamentos (Pwned): ${PWNED_COUNT:-0} - ${PWNED_BREACHES:-N/A}
 theHarvester Emails: ${HARVESTER_EMAILS:-N/A}
+Abuse Score: ${ABUSE_SCORE:-N/A}%
+Abuse Reports: ${ABUSE_REPORTS:-N/A}
+Abuse Ultimo Report: ${ABUSE_LAST:-Nunca}
 EOF
 
     update_progress $step_notify "Notificacao..."

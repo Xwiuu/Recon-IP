@@ -34,6 +34,11 @@ source lib/social_osint.sh
 source lib/earth_integration.sh
 source lib/dorks.sh
 source lib/mac_osint.sh
+source lib/cep.sh
+source lib/pwned.sh
+source lib/abuse.sh
+source lib/cloud.sh
+source lib/cms.sh
 
 # Garante que jq esta no PATH (Windows via winget)
 if ! command -v jq &>/dev/null; then
