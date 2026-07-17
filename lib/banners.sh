@@ -15,13 +15,18 @@ grab_banner() {
     local ip=$1
     local pasta=$2
     local banner_file="${pasta}/banners.txt"
+    local ip_type
+    ip_type=$(tipo_ip "$ip")
+    local curl_opts=""
+    local nc_opts=""
+    [ "$ip_type" = "IPv6" ] && curl_opts="-6" && nc_opts="-6"
 
     SERVER_INFO="N/A"; TITLE_INFO="N/A"
     SSL_ISSUER="N/A"; SSL_EXPIRY="N/A"; SSL_CN="N/A"
     SSH_BANNER="N/A"; FTP_BANNER="N/A"; FAVICON_HASH="N/A"
 
     echo "=== BANNER GRABBING ===" > "$banner_file"
-    echo "IP: $ip" >> "$banner_file"
+    echo "IP: $ip ($ip_type)" >> "$banner_file"
     echo "Data: $(date)" >> "$banner_file"
     echo "--------------------------------" >> "$banner_file"
 
@@ -32,7 +37,7 @@ grab_banner() {
             [ "$porta" = "443" ] || [ "$porta" = "8443" ] && proto="https"
 
             log_info "Capturando banner HTTP na porta ${porta}..."
-            curl -k -s -L -m 3 -i "${proto}://${ip}:${porta}" 2>/dev/null | head -30 > "${pasta}/http_${porta}.txt"
+            curl $curl_opts -k -s -L -m 3 -i "${proto}://${ip}:${porta}" 2>/dev/null | head -30 > "${pasta}/http_${porta}.txt"
 
             server=$(grep -i "^Server:" "${pasta}/http_${porta}.txt" | head -1 | sed 's/^[Ss]erver: //' | sed 's/\r//')
             xpowered=$(grep -i "^X-Powered-By:" "${pasta}/http_${porta}.txt" | head -1 | sed 's/^[Xx]-[Pp]owered-[Bb]y: //' | sed 's/\r//')
@@ -60,9 +65,12 @@ grab_banner() {
     # SSH Banner
     if grep -q "22/tcp.*ABERTA" "${pasta}/portas.txt" 2>/dev/null; then
         log_info "Capturando banner SSH..."
-        ssh_banner=$(timeout 3 bash -c "exec 3<>/dev/tcp/${ip}/22 2>/dev/null; cat <&3" 2>/dev/null | head -1)
+        ssh_banner=""
+        if [ "$ip_type" = "IPv4" ]; then
+            ssh_banner=$(timeout 3 bash -c "exec 3<>/dev/tcp/${ip}/22 2>/dev/null; cat <&3" 2>/dev/null | head -1)
+        fi
         if [ -z "$ssh_banner" ]; then
-            ssh_banner=$(timeout 3 nc -vn "$ip" 22 2>&1 | grep -i "SSH" | head -1 | sed 's/^.*SSH/SSH/')
+            ssh_banner=$(timeout 3 nc $nc_opts -vn "$ip" 22 2>&1 | grep -i "SSH" | head -1 | sed 's/^.*SSH/SSH/')
         fi
         [ -z "$ssh_banner" ] && ssh_banner="Timeout"
         SSH_BANNER="$ssh_banner"
@@ -74,9 +82,12 @@ grab_banner() {
     # FTP Banner
     if grep -q "21/tcp.*ABERTA" "${pasta}/portas.txt" 2>/dev/null; then
         log_info "Capturando banner FTP..."
-        ftp_banner=$(timeout 3 bash -c "exec 3<>/dev/tcp/${ip}/21 2>/dev/null; cat <&3" 2>/dev/null | head -1)
+        ftp_banner=""
+        if [ "$ip_type" = "IPv4" ]; then
+            ftp_banner=$(timeout 3 bash -c "exec 3<>/dev/tcp/${ip}/21 2>/dev/null; cat <&3" 2>/dev/null | head -1)
+        fi
         if [ -z "$ftp_banner" ]; then
-            ftp_banner=$(timeout 3 nc -vn "$ip" 21 2>&1 | grep -i "220" | head -1)
+            ftp_banner=$(timeout 3 nc $nc_opts -vn "$ip" 21 2>&1 | grep -i "220" | head -1)
         fi
         [ -z "$ftp_banner" ] && ftp_banner="Timeout"
         FTP_BANNER="$ftp_banner"
@@ -88,7 +99,9 @@ grab_banner() {
     # SSL Certificate
     if grep -q "443/tcp.*ABERTA" "${pasta}/portas.txt" 2>/dev/null; then
         log_info "Extraindo certificado SSL..."
-        cert_data=$(timeout 5 openssl s_client -connect "${ip}:443" -servername "$ip" 2>/dev/null < /dev/null)
+        local ssl_opts=""
+        [ "$ip_type" = "IPv6" ] && ssl_opts="-6"
+        cert_data=$(timeout 5 openssl s_client $ssl_opts -connect "${ip}:443" -servername "$ip" 2>/dev/null < /dev/null)
         if [ -n "$cert_data" ]; then
             echo "$cert_data" > "${pasta}/ssl_cert.txt"
             local parsed
@@ -116,7 +129,7 @@ grab_banner() {
         if grep -q "80/tcp.*ABERTA\|443/tcp.*ABERTA\|8080/tcp.*ABERTA\|8443/tcp.*ABERTA" "${pasta}/portas.txt" 2>/dev/null; then
             log_info "Baixando favicon.ico..."
             local favicon_data
-            favicon_data=$(curl -k -s -L -m 3 "${proto}://${ip}/favicon.ico" 2>/dev/null)
+            favicon_data=$(curl $curl_opts -k -s -L -m 3 "${proto}://${ip}/favicon.ico" 2>/dev/null)
             if [ -n "$favicon_data" ] && [ ${#favicon_data} -gt 100 ]; then
                 local hash
                 hash=$(echo "$favicon_data" | md5sum 2>/dev/null | cut -d' ' -f1)

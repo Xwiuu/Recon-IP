@@ -17,6 +17,13 @@ source lib/tunnels.sh
 source lib/notify.sh
 source lib/banners.sh
 source lib/network.sh
+source lib/dns.sh
+source lib/whois_domain.sh
+source lib/export.sh
+source lib/cve.sh
+source lib/dns_axfr.sh
+source lib/security_headers.sh
+source lib/email_security.sh
 
 # Garante que jq esta no PATH (Windows via winget)
 if ! command -v jq &>/dev/null; then
@@ -52,9 +59,10 @@ menu_principal() {
     echo -e " ${CYAN}[2]${NC} Scan por URL (DNS)"
     echo -e " ${CYAN}[3]${NC} Scan por MAC"
     echo -e " ${CYAN}[4]${NC} Modo Link (Tuneis)"
-    echo -e " ${CYAN}[5]${NC} Sair"
+    echo -e " ${CYAN}[5]${NC} Abrir Mapa (ultimo scan)"
+    echo -e " ${CYAN}[6]${NC} Sair"
     echo
-    printf "  Escolha (1-5): "
+    printf "  Escolha (1-6): "
 }
 
 # ========== OPCOES ==========
@@ -88,7 +96,9 @@ opcao_scan_url() {
         sleep 1
         return
     fi
-    echo -e "  ${GREEN}DNS resolvido: $ip${NC}"
+    local ip_type
+    ip_type=$(tipo_ip "$ip")
+    echo -e "  ${GREEN}DNS resolvido: $ip ($ip_type)${NC}"
     processar_ip "$ip" "$url"
     echo -e "  ${GREEN}Scan concluido! Relatorio: output/recon_$ip/report.html${NC}"
     printf "  Pressione Enter para continuar..."
@@ -125,6 +135,45 @@ opcao_modo_link() {
     ./super_recon.sh
 }
 
+opcao_abrir_mapa() {
+    echo
+    local last_dir=$(ls -1dt output/recon_*/ 2>/dev/null | head -1)
+    if [ -z "$last_dir" ]; then
+        echo -e "  ${RED}Nenhum scan encontrado. Execute um scan primeiro.${NC}"
+        printf "  Pressione Enter para continuar..."
+        read -r
+        return
+    fi
+    local resumo="${last_dir}resumo.txt"
+    if [ ! -f "$resumo" ]; then
+        echo -e "  ${RED}Arquivo resumo.txt nao encontrado em ${last_dir}.${NC}"
+        printf "  Pressione Enter para continuar..."
+        read -r
+        return
+    fi
+    local coords=$(grep "Coordenadas:" "$resumo" | cut -d: -f2 | xargs)
+    if [ -z "$coords" ] || [ "$coords" = "N/A" ]; then
+        echo -e "  ${RED}Coordenadas nao disponiveis no scan.${NC}"
+        printf "  Pressione Enter para continuar..."
+        read -r
+        return
+    fi
+    local lat=$(echo "$coords" | cut -d, -f1)
+    local lon=$(echo "$coords" | cut -d, -f2)
+    echo -e "  ${GREEN}Abrindo mapa para coordenadas: $lat, $lon${NC}"
+    if command -v xdg-open &>/dev/null; then
+        xdg-open "https://www.google.com/maps?q=${lat},${lon}"
+    elif command -v open &>/dev/null; then
+        open "https://www.google.com/maps?q=${lat},${lon}"
+    elif command -v start &>/dev/null; then
+        start "https://www.google.com/maps?q=${lat},${lon}"
+    else
+        echo -e "  ${YELLOW}URL: https://www.google.com/maps?q=${lat},${lon}${NC}"
+    fi
+    printf "  Pressione Enter para continuar..."
+    read -r
+}
+
 # ========== HELP ==========
 mostrar_help() {
     cat <<EOF
@@ -140,7 +189,8 @@ Dependencias:
 Modulos carregados de lib/:
   core.sh, geo.sh, ports.sh, weather.sh, whois.sh,
   streetview.sh, report.sh, tunnels.sh, notify.sh,
-  banners.sh, network.sh
+  banners.sh, network.sh, dns.sh, whois_domain.sh,
+  export.sh, cve.sh
 EOF
 }
 
@@ -170,7 +220,8 @@ while true; do
         2) opcao_scan_url ;;
         3) opcao_scan_mac ;;
         4) opcao_modo_link ;;
-        5) echo -e "\n  ${GREEN}Saindo...${NC}"; exit 0 ;;
+        5) opcao_abrir_mapa ;;
+        6) echo -e "\n  ${GREEN}Saindo...${NC}"; exit 0 ;;
         *) echo -e "  ${RED}Opcao invalida!${NC}"; sleep 1 ;;
     esac
 done

@@ -48,19 +48,29 @@ finish_progress() {
     echo
 }
 
-# Valida se é um IPv4 válido
+# Valida se é IPv4 ou IPv6 válido
 validar_ip() {
     local ip=$1
+    # IPv4
     if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        # Verifica se cada octeto está entre 0 e 255
-        for octeto in $(echo $ip | tr '.' ' '); do
-            if [ $octeto -lt 0 ] || [ $octeto -gt 255 ]; then
-                return 1
-            fi
+        for octeto in $(echo "$ip" | tr '.' ' '); do
+            [ "$octeto" -gt 255 ] && return 1
         done
         return 0
+    fi
+    # IPv6 (presença de : com dígitos hexa)
+    if [[ $ip =~ ^[0-9a-fA-F:]+$ ]]; then
+        return 0
+    fi
+    return 1
+}
+
+tipo_ip() {
+    local ip=$1
+    if [[ $ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "IPv4"
     else
-        return 1
+        echo "IPv6"
     fi
 }
 
@@ -72,7 +82,8 @@ formatar_data() {
 # Cria a pasta de recon para um IP e retorna o caminho
 criar_pasta_recon() {
     local ip=$1
-    local pasta="output/recon_${ip}"
+    local safe_ip=$(echo "$ip" | sed 's/:/_/g' | sed 's/%/_/g')
+    local pasta="output/recon_${safe_ip}"
     mkdir -p "$pasta"
     echo "$pasta"
 }
@@ -113,13 +124,25 @@ processar_ip() {
         return 1
     fi
 
+    local ip_type
+    ip_type=$(tipo_ip "$ip")
+    export IP_TYPE="$ip_type"
+
     local start_time=$SECONDS
 
-    log_info "Iniciando scan para IP: $ip"
+    log_info "Iniciando scan para IP: $ip ($ip_type)"
     local pasta=$(criar_pasta_recon "$ip")
     log_success "Pasta criada: $pasta"
 
-    init_progress "GeoIP" "IPInfo" "Clima" "Portas" "Banners" "Whois" "Rede" "Ping" "StreetView" "Relatorio" "Resumo" "Notificacao"
+    local has_domain=0
+    [ -n "$dominio" ] && has_domain=1
+
+    if [ "$has_domain" -eq 1 ]; then
+        init_progress "GeoIP" "IPInfo" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "DNS" "WHOIS Dom" "AXFR" "EmailSec" "HttpHeaders" "Rede" "Ping" "StreetView" "Relatorio" "Export" "Resumo" "Notificacao"
+    else
+        init_progress "GeoIP" "IPInfo" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "HttpHeaders" "Rede" "Ping" "StreetView" "Relatorio" "Export" "Resumo" "Notificacao"
+    fi
+
     update_progress 1 "GeoIP..."
     geo_lookup "$ip" "$pasta"
     [ $? -ne 0 ] && log_error "Geo falhou, continuando mesmo assim..."
@@ -130,17 +153,85 @@ processar_ip() {
     update_progress 3 "Clima..."
     get_weather "$LAT" "$LON" "$pasta"
 
-    update_progress 4 "Portas..."
+    update_progress 4 "Portas TCP..."
     scan_ports "$ip" "$pasta"
 
-    update_progress 5 "Banners..."
+    update_progress 5 "Portas UDP..."
+    scan_udp_ports "$ip" "$pasta"
+
+    update_progress 6 "Banners..."
     grab_banner "$ip" "$pasta"
 
-    update_progress 6 "Whois..."
+    update_progress 7 "CVE..."
+    if [ -n "${SERVER_INFO:-}" ] && [ "$SERVER_INFO" != "N/A" ]; then
+        local parsed
+        parsed=$(parse_server_info "$SERVER_INFO")
+        local sw=$(echo "$parsed" | cut -d'|' -f1)
+        local ver=$(echo "$parsed" | cut -d'|' -f2)
+        check_cves "$sw" "$ver" "$pasta"
+    else
+        check_cves "N/A" "" "$pasta"
+    fi
+
+    update_progress 8 "Whois..."
     whois_lookup "$ip" "$pasta"
 
-    update_progress 7 "Rede..."
-    network_recon "$ip" "$pasta" "$dominio"
+    # Soh executa se tivermos dominio
+    if [ "$has_domain" -eq 1 ]; then
+        update_progress 9 "DNS..."
+        dns_extras "$dominio" "$pasta"
+
+        update_progress 10 "WHOIS Dom..."
+        whois_domain "$dominio" "$pasta"
+    fi
+
+    # --- NOVAS FUNCIONALIDADES (PACOTE 2) ---
+    if [ "$has_domain" -eq 1 ]; then
+        update_progress 11 "AXFR..."
+        test_axfr "$dominio" "$pasta"
+
+        update_progress 12 "EmailSec..."
+        check_email_security "$dominio" "$pasta"
+
+        update_progress 13 "HttpHeaders..."
+        check_security_headers "$ip" "$dominio" "$pasta"
+    else
+        update_progress 9 "HttpHeaders..."
+        check_security_headers "$ip" "$dominio" "$pasta"
+    fi
+
+    # Ajusta o indice do progresso com base em has_domain
+    local step_net=10
+    local step_reverse=11
+    local step_ping=12
+    local step_street=13
+    local step_report=14
+    local step_export=15
+    local step_resumo=16
+    local step_notify=17
+    if [ "$has_domain" -eq 1 ]; then
+        step_net=14
+        step_reverse=15
+        step_ping=16
+        step_street=17
+        step_report=18
+        step_export=19
+        step_resumo=20
+        step_notify=21
+    fi
+
+    if [ "$ip_type" = "IPv6" ]; then
+        update_progress $step_net "Rede..."
+        log_info "Scan de rede /24 nao suportado para IPv6, pulando..."
+        VIZINHOS_COUNT="N/A"; VIZINHOS_LIST="N/A"
+        TRACEROUTE_HOPS="N/A"; DOMAIN_CREATED="N/A"; DOMAIN_ADMIN="N/A"; DOMAIN_REGISTRAR="N/A"
+    else
+        update_progress $step_net "Rede..."
+        network_recon "$ip" "$pasta" "$dominio"
+
+        update_progress $step_reverse "Reverse IP..."
+        reverse_ip_lookup "$ip" "$pasta"
+    fi
 
     # Fallback ASN do whois_api.json (se geo.json nao tiver)
     if [ "${ASN:-N/A}" = "N/A" ] && [ -f "${pasta}/whois_api.json" ]; then
@@ -153,18 +244,33 @@ processar_ip() {
         fi
     fi
 
-    update_progress 8 "Ping..."
+    update_progress $step_ping "Ping..."
     ping_ip "$ip" "$pasta"
+    if [ "$has_domain" -eq 1 ]; then
+        ping_domain "$dominio" "$pasta"
+        check_https "$dominio" "$pasta"
+    fi
 
-    update_progress 9 "StreetView..."
+    update_progress $step_street "StreetView..."
     get_streetview "$LAT" "$LON" "$pasta"
 
-    update_progress 10 "Relatorio..."
+    update_progress $step_report "Relatorio..."
     gerar_relatorio "$ip" "$pasta"
 
-    update_progress 11 "Resumo..."
+    update_progress $step_export "Exportando..."
+    export_json "$ip" "$pasta"
+    export_csv "$ip" "$pasta"
+
+    update_progress $step_resumo "Resumo..."
+    local cve_count
+    cve_count=$(grep -c "^CVE:" "${pasta}/cves.txt" 2>/dev/null || echo "0")
+
+    local udp_ports
+    udp_ports=$(grep "ABERTA" "${pasta}/portas_udp.txt" 2>/dev/null | grep -oP '\d+/udp' | paste -sd ',' -)
+
     cat > "$pasta/resumo.txt" <<EOF
 IP: $ip
+Tipo: $ip_type
 Data: $(formatar_data)
 Cidade: $CITY
 Regiao: $REGION
@@ -176,14 +282,21 @@ Hostname: ${HOSTNAME:-N/A}
 ASN: ${ASN:-N/A}
 Rede: ${REDE:-N/A}
 Ping: ${PING:-N/A}
+Ping Dominio: ${DOMAIN_PING:-N/A}
 Servidor Web: ${SERVER_INFO:-N/A}
 Titulo: ${TITLE_INFO:-N/A}
 SSL: ${SSL_ISSUER:-N/A} - ${SSL_EXPIRY:-N/A}
 Favicon Hash: ${FAVICON_HASH:-N/A}
 Vizinhos /24: ${VIZINHOS_COUNT:-N/A}
+Dominio: ${dominio:-N/A}
+DNS IPv4: ${DNS_IPV4:-N/A}
+DNS IPv6: ${DNS_IPV6:-N/A}
+HTTPS: ${HTTPS_STATUS:-N/A}
+UDP Abertas: ${udp_ports:-N/A}
+CVEs Encontrados: ${cve_count:-0}
 EOF
 
-    update_progress 12 "Notificacao..."
+    update_progress $step_notify "Notificacao..."
     send_notifications "$ip" "$pasta"
 
     finish_progress
@@ -202,21 +315,33 @@ EOF
     ls -la "$pasta"
 }
 
-# ========== DNS RESOLVER ==========
+# ========== DNS RESOLVER (prioriza IPv4, fallback IPv6) ==========
 resolve_dns() {
     local url=$1
     url=$(echo "$url" | sed -E 's|https?://||' | sed 's|/.*||' | sed 's|:.*||')
 
-    local ip=""
+    local ip4=""
+    local ip6=""
+
     if command -v dig &>/dev/null; then
-        ip=$(dig +short "$url" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+        ip4=$(dig +short -4 "$url" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+        [ -z "$ip4" ] && ip6=$(dig +short -6 "$url" 2>/dev/null | grep -E '^[0-9a-fA-F:]+$' | head -n1)
     elif command -v host &>/dev/null; then
-        ip=$(host "$url" 2>/dev/null | grep 'has address' | head -n1 | awk '{print $NF}')
+        ip4=$(host -t A "$url" 2>/dev/null | grep 'has address' | head -n1 | awk '{print $NF}')
+        [ -z "$ip4" ] && ip6=$(host -t AAAA "$url" 2>/dev/null | grep 'has IPv6 address' | head -n1 | awk '{print $NF}')
     elif command -v nslookup &>/dev/null; then
-        ip=$(nslookup "$url" 2>/dev/null | grep -E '^Address' | tail -n1 | awk '{print $NF}')
+        ip4=$(nslookup "$url" 2>/dev/null | grep -E '^Address' | grep -v '#' | awk '{print $NF}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+        [ -z "$ip4" ] && ip6=$(nslookup "$url" 2>/dev/null | grep -E '^Address' | grep -v '#' | awk '{print $NF}' | grep -E '^[0-9a-fA-F:]+$' | head -n1)
     fi
 
-    echo "$ip"
+    # Prioriza IPv4
+    if [ -n "$ip4" ]; then
+        echo "$ip4"
+    elif [ -n "$ip6" ]; then
+        echo "$ip6"
+    else
+        echo ""
+    fi
 }
 
 # ========== MAC ADDRESS ==========
@@ -273,12 +398,19 @@ buscar_ipinfo() {
     fi
 }
 
-# ========== PING ==========
+# ========== PING (IPv4 e IPv6) ==========
 ping_ip() {
     local ip=$1
     local pasta=$2
+    local ip_type
+    ip_type=$(tipo_ip "$ip")
+
     if command -v ping &>/dev/null; then
-        local ping_result=$(ping -c 1 -W 1 "$ip" 2>/dev/null | grep -oE 'time=[0-9.]+ ms' | head -1)
+        local ping_cmd="ping"
+        local ping_args="-c 1 -W 1"
+        [ "$ip_type" = "IPv6" ] && ping_args="-c 1 -W 1 -6"
+
+        local ping_result=$($ping_cmd $ping_args "$ip" 2>/dev/null | grep -oE 'time=[0-9.]+ ms' | head -1)
         if [ -n "$ping_result" ]; then
             PING="$ping_result"
             log_success "Ping: $PING"

@@ -80,8 +80,8 @@ network_recon() {
         log_warning "Traceroute: comando nao disponivel"
     fi
 
-    # Whois de Dominio
-    if [ -n "$dominio" ]; then
+    # Whois de Dominio (pula se ja foi feito pelo whois_domain.sh)
+    if [ -n "$dominio" ] && [ "${DOMAIN_WHOIS_DONE:-0}" -ne 1 ]; then
         log_info "Consultando WHOIS do dominio ${dominio}..."
         local dwhois
         dwhois=$(whois "$dominio" 2>/dev/null)
@@ -91,7 +91,7 @@ network_recon() {
             echo -e "\n✅ Whois do Dominio:" >> "$net_file"
 
             DOMAIN_CREATED=$(echo "$dwhois" | grep -i "creation date" | head -1 | sed 's/.*: *//')
-            DOMAIN_ADMIN=$(echo "$dwhois" | grep -i "admin name\|admin-?\?name\|person" | head -1 | sed 's/.*: *//')
+            DOMAIN_ADMIN=$(echo "$dwhois" | grep -i "admin name\|admin name\|person" | head -1 | sed 's/.*: *//')
             DOMAIN_REGISTRAR=$(echo "$dwhois" | grep -i "registrar:" | head -1 | sed 's/.*: *//')
 
             echo "   Dominio: $dominio" >> "$net_file"
@@ -105,8 +105,30 @@ network_recon() {
             log_warning "Falha ao consultar WHOIS do dominio"
         fi
     fi
-
+    
     export VIZINHOS_COUNT VIZINHOS_LIST TRACEROUTE_HOPS
     export DOMAIN_CREATED DOMAIN_ADMIN DOMAIN_REGISTRAR DOMAIN_WHOIS_RAW
     log_success "Reconhecimento de rede concluido."
+}
+
+# ========== REVERSE IP LOOKUP ==========
+reverse_ip_lookup() {
+    local ip=$1
+    local pasta=$2
+    local rev_file="${pasta}/reverse_ip.txt"
+
+    log_info "Buscando dominios no mesmo IP..."
+
+    if command -v curl &>/dev/null; then
+        curl -s "https://api.hackertarget.com/reverseiplookup/?q=${ip}" -o "$rev_file"
+    else
+        echo "Reverse IP: Indisponivel" > "$rev_file"
+        return
+    fi
+
+    if [ -s "$rev_file" ]; then
+        log_success "Reverse IP concluido."
+    else
+        echo "Nenhum dominio encontrado." > "$rev_file"
+    fi
 }

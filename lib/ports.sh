@@ -7,7 +7,13 @@ scan_ports() {
     local portas_file="${pasta}/portas.txt"
     local portas=("21" "22" "25" "80" "443" "3306" "8080" "8443" "9000" "8000" "5432" "6379" "27017")
 
-    log_info "Escaneando portas comuns em $ip..."
+    local ip_type
+    ip_type=$(tipo_ip "$ip")
+    local nmap_opts=""
+    local nc_opts=""
+    [ "$ip_type" = "IPv6" ] && nmap_opts="-6" && nc_opts="-6"
+
+    log_info "Escaneando portas comuns em $ip ($ip_type)..."
 
     echo "SCAN DE PORTAS - $(date)" > "$portas_file"
     echo "--------------------------------" >> "$portas_file"
@@ -17,16 +23,16 @@ scan_ports() {
 
         # Tenta nmap (mais confiável)
         if command -v nmap &>/dev/null; then
-            if nmap -p "$porta" --host-timeout 2s "$ip" 2>/dev/null | grep -q "open"; then
+            if nmap $nmap_opts -p "$porta" --host-timeout 2s "$ip" 2>/dev/null | grep -q "open"; then
                 status="ABERTA"
             fi
         # Tenta nc (netcat)
         elif command -v nc &>/dev/null; then
-            if nc -zv -w 2 "$ip" "$porta" 2>&1 | grep -q "succeeded\|open"; then
+            if nc $nc_opts -zv -w 2 "$ip" "$porta" 2>&1 | grep -q "succeeded\|open"; then
                 status="ABERTA"
             fi
-        # Fallback: /dev/tcp (Linux/WSL)
-        elif timeout 2 bash -c "echo > /dev/tcp/${ip}/${porta}" 2>/dev/null; then
+        # Fallback: /dev/tcp (funciona apenas IPv4, Linux/WSL)
+        elif [ "$ip_type" = "IPv4" ] && timeout 2 bash -c "echo > /dev/tcp/${ip}/${porta}" 2>/dev/null; then
             status="ABERTA"
         fi
 
@@ -57,4 +63,32 @@ scan_ports() {
     done
 
     log_success "Scan de portas concluído. Salvou em $portas_file"
+}
+
+# ========== SCAN DE PORTAS UDP ==========
+scan_udp_ports() {
+    local ip=$1
+    local pasta=$2
+    local udp_file="${pasta}/portas_udp.txt"
+    local portas_udp=("53" "123" "161" "162" "514" "520" "12345")
+
+    log_info "Escaneando portas UDP em $ip..."
+    echo "=== PORTAS UDP ===" > "$udp_file"
+
+    for porta in "${portas_udp[@]}"; do
+        if command -v nmap &>/dev/null; then
+            if nmap -sU -p "$porta" --host-timeout 2s "$ip" 2>/dev/null | grep -q "open"; then
+                echo "${porta}/udp - ABERTA" >> "$udp_file"
+                echo "${porta}/udp - ABERTA"
+            else
+                echo "${porta}/udp - FECHADA" >> "$udp_file"
+            fi
+        elif command -v nc &>/dev/null; then
+            echo "${porta}/udp - N/A (nc nao suporta UDP scan)" >> "$udp_file"
+        else
+            echo "${porta}/udp - N/A (ferramenta nao disponivel)" >> "$udp_file"
+        fi
+    done
+
+    log_success "Scan de portas UDP concluido. Salvou em $udp_file"
 }

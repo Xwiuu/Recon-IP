@@ -6,6 +6,19 @@ gerar_relatorio() {
     local pasta=$2
 
     log_info "Gerando relatório HTML..."
+    local ip_type
+    ip_type=$(tipo_ip "$ip")
+
+    local vizinhos_text
+    if [ "${IP_TYPE}" = "IPv6" ]; then
+        vizinhos_text="N/A (IPv6)"
+    elif [ -z "${VIZINHOS_COUNT}" ] || [ "${VIZINHOS_COUNT}" = "N/A" ]; then
+        vizinhos_text="N/A"
+    elif [ "${VIZINHOS_COUNT}" -eq 0 ] 2>/dev/null; then
+        vizinhos_text="Nenhum host vivo encontrado"
+    else
+        vizinhos_text="${VIZINHOS_COUNT} hosts encontrados"
+    fi
 
     cat > "${pasta}/report.html" <<EOF
 <!DOCTYPE html>
@@ -23,6 +36,7 @@ gerar_relatorio() {
         .badge-green { border-color: #2ea043; color: #3fb950; }
         .badge-blue { border-color: #58a6ff; color: #58a6ff; }
         .badge-red { border-color: #da3633; color: #f85149; }
+        .badge-purple { border-color: #bc8cff; color: #bc8cff; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
         .card { background: #0d1117; padding: 18px; border-radius: 12px; border: 1px solid #30363d; }
         .card h3 { color: #f0f6fc; margin-bottom: 12px; font-size: 18px; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
@@ -44,6 +58,7 @@ gerar_relatorio() {
     <h1>🕵️ ReconIP v2.0 — Relatório de IP</h1>
     <div>
         <span class="badge badge-blue">🌐 ${ip}</span>
+        <span class="badge badge-purple">📡 ${ip_type}</span>
         <span class="badge badge-green">📅 $(formatar_data)</span>
     </div>
 
@@ -105,21 +120,58 @@ EOF
 EOF
     fi
 
+    # DNS Records card (só se houver dados de dominio)
+    if [ -n "${DNS_IPV4}" ] && [ "${DNS_IPV4}" != "N/A" ]; then
+        cat >> "${pasta}/report.html" <<EOF
+    <div class="card">
+        <h3>📡 Registros DNS</h3>
+        <p><strong>IPv4:</strong> ${DNS_IPV4}</p>
+        <p><strong>IPv6:</strong> ${DNS_IPV6:-N/A}</p>
+        <p><strong>MX:</strong> ${DNS_MX:-N/A}</p>
+        <p><strong>TXT:</strong> ${DNS_TXT:-N/A}</p>
+        <p><strong>NS:</strong> ${DNS_NS:-N/A}</p>
+        <p><strong>SOA:</strong> ${DNS_SOA:-N/A}</p>
+    </div>
+EOF
+    fi
+
     cat >> "${pasta}/report.html" <<EOF
     <div class="card">
         <h3>📡 Latência</h3>
         <p><strong>Ping:</strong> ${PING:-Indisponível}</p>
     </div>
+EOF
 
+    if [ -n "${HTTPS_STATUS}" ] && [ "${HTTPS_STATUS}" != "N/A" ]; then
+        cat >> "${pasta}/report.html" <<EOF
+    <div class="card">
+        <h3>🔒 Segurança HTTPS</h3>
+        <p><strong>Status:</strong> ${HTTPS_STATUS}</p>
+        <p><strong>Servidor:</strong> ${HTTPS_SERVER:-N/A}</p>
+        <p><strong>Certificado Válido:</strong> ${HTTPS_CERT_VALID:-N/A}</p>
+        <p><strong>Subject:</strong> ${HTTPS_CERT_SUBJECT:-N/A}</p>
+        <p><strong>Emissor:</strong> ${HTTPS_CERT_ISSUER:-N/A}</p>
+        <p><strong>Válido de:</strong> ${HTTPS_CERT_START:-N/A}</p>
+        <p><strong>Válido até:</strong> ${HTTPS_CERT_END:-N/A}</p>
+    </div>
+EOF
+    fi
+
+    cat >> "${pasta}/report.html" <<EOF
     <div class="card">
         <h3>🗺️ Reconhecimento de Rede</h3>
-        <p><strong>Vizinhos /24:</strong> $(if [ "${VIZINHOS_COUNT:-0}" -eq 0 ]; then echo "Nenhum host vivo encontrado"; else echo "${VIZINHOS_COUNT} hosts encontrados"; fi)</p>
+        <p><strong>Vizinhos /24:</strong> ${vizinhos_text}</p>
         <pre>${VIZINHOS_LIST:-N/A}</pre>
         <p><strong>Traceroute:</strong></p>
         <pre>${TRACEROUTE_HOPS:-N/A}</pre>
-        <p><strong>Domínio Criado em:</strong> ${DOMAIN_CREATED:-N/A}</p>
-        <p><strong>Admin:</strong> ${DOMAIN_ADMIN:-N/A}</p>
-        <p><strong>Registro:</strong> ${DOMAIN_REGISTRAR:-N/A}</p>
+        $(if [ -n "${dominio:-}" ]; then echo "<p><strong>Domínio:</strong> ${dominio}</p>"; fi)
+        <p><strong>Criado em:</strong> ${DOMAIN_CREATED:-N/A}</p>
+        <p><strong>Expira em:</strong> ${DOMAIN_EXPIRY:-N/A}</p>
+        <p><strong>Registrante:</strong> ${DOMAIN_ADMIN:-N/A}</p>
+        <p><strong>Registrar:</strong> ${DOMAIN_REGISTRAR:-N/A}</p>
+        <p><strong>Servidores NS:</strong> ${DOMAIN_NS_WHOIS:-N/A}</p>
+        <p><strong>Status:</strong> ${DOMAIN_STATUS:-N/A}</p>
+        <p><strong>Ping Domínio:</strong> ${DOMAIN_PING:-N/A}</p>
     </div>
 
     <div class="card">
@@ -142,6 +194,21 @@ done)
     <div class="card">
         <h3>📋 WHOIS (primeiras 20 linhas)</h3>
         <pre>$(head -n 20 "${pasta}/whois.txt" 2>/dev/null || echo "WHOIS não disponível")</pre>
+    </div>
+
+    <div class="card">
+        <h3>🌐 Transferência de Zona (AXFR)</h3>
+        <pre>$(cat "${pasta}/axfr.txt" 2>/dev/null || echo "N/A")</pre>
+    </div>
+
+    <div class="card">
+        <h3>🛡️ Cabeçalhos de Segurança HTTP</h3>
+        <pre>$(cat "${pasta}/security_headers.txt" 2>/dev/null || echo "N/A")</pre>
+    </div>
+
+    <div class="card">
+        <h3>📧 Segurança de E-mail (SPF/DKIM/DMARC)</h3>
+        <pre>$(cat "${pasta}/email_security.txt" 2>/dev/null || echo "N/A")</pre>
     </div>
 
     <div class="footer">

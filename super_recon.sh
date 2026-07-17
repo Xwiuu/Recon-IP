@@ -26,6 +26,8 @@ source lib/tunnels.sh
 source lib/notify.sh
 source lib/banners.sh
 source lib/network.sh
+source lib/dns.sh
+source lib/whois_domain.sh
 
 # ========== HELP ==========
 mostrar_help() {
@@ -50,7 +52,7 @@ Modo Scan:
   - Reconhecimento de rede (/24, traceroute)
   - Gera relatório HTML e envia notificação
 
-Dependências: php, curl, jq, whois, cloudflared, ngrok, loclx
+Dependências: php, curl, jq, whois, openssl, dig/host, cloudflared, ngrok, loclx
 EOF
 }
 
