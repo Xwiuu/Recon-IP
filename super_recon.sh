@@ -82,6 +82,42 @@ Dependências: php, curl, jq, whois, openssl, dig/host, cloudflared, ngrok, locl
 EOF
 }
 
+# ========== VERIFICA PHP ==========
+check_php() {
+    if command -v php &>/dev/null; then
+        return 0
+    fi
+
+    if which php &>/dev/null 2>&1; then
+        return 0
+    fi
+
+    if command -v cmd &>/dev/null; then
+        local php_path=$(cmd /c "where php 2>nul" 2>/dev/null | head -n1)
+        if [ -n "$php_path" ] && [ -f "$php_path" ]; then
+            export PATH="$PATH:$(dirname "$php_path")"
+            return 0
+        fi
+    fi
+
+    local paths=(
+        "/c/Program Files/php/php.exe"
+        "/c/Program Files/PHP/php.exe"
+        "/c/xampp/php/php.exe"
+        "/c/php/php.exe"
+        "/c/Program Files (x86)/php/php.exe"
+        "/d/Program Files/php/php.exe"
+    )
+    for path in "${paths[@]}"; do
+        if [ -f "$path" ]; then
+            export PATH="$PATH:$(dirname "$path")"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 # ========== MODO SERVIDOR (LINK) ==========
 modo_servidor() {
     log_info "Modo Link ativado."
@@ -91,13 +127,13 @@ modo_servidor() {
     # Limpa capturas anteriores para evitar re-scan
     rm -f captures/last_ip.txt
 
-    if ! command -v php &>/dev/null; then
+    if ! check_php; then
         log_error "PHP não encontrado."
-        log_info "Instale o PHP no Windows:"
-        echo "   choco install php"
-        echo "   winget install PHP"
-        log_info "No Linux: sudo apt install php"
-        tui_msgbox "PHP não instalado.\nInstale e tente novamente." "Erro"
+        log_info "Instale o PHP:"
+        echo -e "${YELLOW}  Linux/WSL: sudo apt install php${NC}"
+        echo -e "${YELLOW}  Windows: choco install php${NC}"
+        echo -e "${YELLOW}  Windows: winget install PHP${NC}"
+        tui_msgbox "PHP não instalado.\n\nInstale e tente novamente." "Erro"
         return 1
     fi
 

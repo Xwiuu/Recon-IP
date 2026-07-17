@@ -467,23 +467,44 @@ validar_mac() {
 
 consulta_mac() {
     local mac=$1
-    mac=$(echo "$mac" | tr '[:lower:]' '[:upper:]' | tr -d ':-' | sed 's/\(..\)/\1:/g;s/:$//')
+    # Normaliza o MAC: remove tracos, dois-pontos, e converte para maiusculo
+    mac=$(echo "$mac" | tr '[:lower:]' '[:upper:]' | tr -d ':-' 2>/dev/null)
 
-    local fabricante=$(curl -s -m 3 "https://api.macvendors.com/$mac" 2>/dev/null)
-    if [ -n "$fabricante" ] && ! echo "$fabricante" | grep -qi "not found"; then
-        echo "$fabricante"
-        return
+    # Tenta API (macvendors.com)
+    if command -v curl &>/dev/null; then
+        local fabricante=$(curl -s -m 3 "https://api.macvendors.com/${mac}" 2>/dev/null)
+        if [ -n "$fabricante" ] && ! echo "$fabricante" | grep -qi "not found"; then
+            echo "$fabricante"
+            return
+        fi
     fi
 
-    case "${mac:0:8}" in
-        "00:1A:2B") echo "Ayecom Technology Co., Ltd." ;;
-        "00:11:22") echo "Apple Inc." ;;
-        "00:23:DF") echo "Cisco Systems, Inc." ;;
-        "00:24:36") echo "Dell Inc." ;;
-        "00:25:9C") echo "HP Inc." ;;
-        "00:1C:B3") echo "Microsoft Corporation" ;;
-        "00:50:56") echo "VMware, Inc." ;;
-        *) echo "Fabricante não encontrado (MAC inválido ou API offline)" ;;
+    # Fallback: banco local (OUI comuns - expandido)
+    case "${mac:0:6}" in
+        "000000") echo "Xerox Corporation" ;;
+        "001377") echo "Samsung Electronics Co.,Ltd" ;;
+        "001A2B") echo "Ayecom Technology Co., Ltd." ;;
+        "001122") echo "Apple Inc." ;;
+        "00236C") echo "Nokia" ;;
+        "0023DF") echo "Cisco Systems, Inc." ;;
+        "002436") echo "Dell Inc." ;;
+        "00259C") echo "HP Inc." ;;
+        "001CB3") echo "Microsoft Corporation" ;;
+        "005056") echo "VMware, Inc." ;;
+        "00E04C") echo "Realtek Semiconductor Corp." ;;
+        "001B21") echo "Intel Corporation" ;;
+        "00D02D") echo "Raspberry Pi Trading Ltd" ;;
+        "000C29") echo "VMware, Inc." ;;
+        "0001B5") echo "Sony Corporation" ;;
+        "80F000") echo "Technicolor (ex-Intel)" ;;
+        "0080F0") echo "Technicolor (ex-Intel)" ;;  # fallback
+        "0003E8") echo "Hitachi" ;;
+        "00A0C9") echo "IBM" ;;
+        "001C42") echo "Nintendo" ;;
+        "002542") echo "ASUSTek Computer Inc." ;;
+        "001FF3") echo "Google, Inc." ;;
+        "00E018") echo "Amazon Technologies Inc." ;;
+        *) echo "Fabricante não encontrado (MAC: ${mac:-N/A})" ;;
     esac
 }
 

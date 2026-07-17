@@ -33,6 +33,7 @@ source lib/monitor.sh
 source lib/social_osint.sh
 source lib/earth_integration.sh
 source lib/dorks.sh
+source lib/mac_osint.sh
 
 # Garante que jq esta no PATH (Windows via winget)
 if ! command -v jq &>/dev/null; then
@@ -125,9 +126,20 @@ opcao_scan_mac() {
         sleep 1
         return
     fi
-    local fabricante
-    fabricante=$(consulta_mac "$mac")
-    echo -e "  ${GREEN}Fabricante: $fabricante${NC}"
+
+    local mac_normalized=$(echo "$mac" | tr '[:lower:]' '[:upper:]' | tr -d ':-')
+    local pasta="output/mac_${mac_normalized}"
+    mkdir -p "$pasta"
+
+    mac_osint_full "$mac" "$pasta"
+
+    echo -e "  ${GREEN}MAC OSINT concluido!${NC}"
+    echo "  Arquivos salvos em: $pasta/"
+    echo "  Relatorio: $pasta/mac_osint.txt"
+    echo
+    echo -e "  ${CYAN}=== RESUMO ===${NC}"
+    head -20 "$pasta/mac_osint.txt"
+    echo
     printf "  Pressione Enter para continuar..."
     read -r
 }
