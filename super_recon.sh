@@ -39,6 +39,11 @@ source lib/vuln_tests.sh
 source lib/ssl_test.sh
 source lib/shodan.sh
 source lib/monitor.sh
+source lib/social_osint.sh
+source lib/earth_integration.sh
+source lib/cep.sh
+source lib/dorks.sh
+source lib/pwned.sh
 
 # ========== HELP ==========
 mostrar_help() {

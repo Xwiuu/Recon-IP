@@ -12,7 +12,8 @@ _extrair_geo() {
     TIMEZONE=$(jq -r '.timezone // "N/A"' "$file" 2>/dev/null)
     HOSTNAME=$(jq -r '.hostname // "N/A"' "$file" 2>/dev/null)
     ASN=$(jq -r '.asn.name // .asn.asn // .as // "N/A"' "$file" 2>/dev/null)
-    export LAT LON CITY REGION COUNTRY ISP TIMEZONE HOSTNAME ASN
+    ZIP=$(jq -r '.zip // "N/A"' "$file" 2>/dev/null)
+    export LAT LON CITY REGION COUNTRY ISP TIMEZONE HOSTNAME ASN ZIP
 }
 
 geo_lookup() {

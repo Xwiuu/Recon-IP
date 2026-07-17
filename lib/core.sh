@@ -138,9 +138,9 @@ processar_ip() {
     [ -n "$dominio" ] && has_domain=1
 
     if [ "$has_domain" -eq 1 ]; then
-        init_progress "GeoIP" "IPInfo" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "DNS" "WHOIS Dom" "Subdominios" "RobotsTXT" "AXFR" "EmailSec" "HttpHeaders" "VulnTests" "SSLTest" "Rede" "ReverseIP" "ReverseDNS" "Ping" "StreetView" "Relatorio" "PDF" "Export" "Resumo" "Notificacao"
+        init_progress "GeoIP" "IPInfo" "CEP" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "DNS" "WHOIS Dom" "Subdominios" "RobotsTXT" "AXFR" "EmailSec" "HttpHeaders" "VulnTests" "SSLTest" "Rede" "ReverseIP" "ReverseDNS" "Ping" "StreetView" "Contatos" "Pwned" "RedesSociais" "Dorks" "theHarvester" "Earth" "KMZ" "Relatorio" "PDF" "Export" "Extra" "Resumo" "Notificacao"
     else
-        init_progress "GeoIP" "IPInfo" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "HttpHeaders" "VulnTests" "SSLTest" "Rede" "ReverseIP" "ReverseDNS" "Ping" "StreetView" "Relatorio" "PDF" "Export" "Resumo" "Notificacao"
+        init_progress "GeoIP" "IPInfo" "CEP" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "HttpHeaders" "VulnTests" "SSLTest" "Rede" "ReverseIP" "ReverseDNS" "Ping" "StreetView" "Contatos" "Pwned" "RedesSociais" "Dorks" "Earth" "KMZ" "Relatorio" "PDF" "Export" "Extra" "Resumo" "Notificacao"
     fi
 
     update_progress 1 "GeoIP..."
@@ -150,21 +150,28 @@ processar_ip() {
     update_progress 2 "IPInfo..."
     buscar_ipinfo "$ip" "$pasta"
 
-    update_progress 3 "Clima..."
+    update_progress 3 "CEP..."
+    if [ -n "${ZIP:-}" ] && [ "${ZIP}" != "N/A" ] && [ "${ZIP}" != "null" ]; then
+        query_cep "$ZIP" "$pasta"
+    else
+        log_debug "Sem CEP disponivel. Pulando."
+    fi
+
+    update_progress 4 "Clima..."
     get_weather "$LAT" "$LON" "$pasta"
 
-    update_progress 4 "Portas TCP..."
+    update_progress 5 "Portas TCP..."
     scan_ports "$ip" "$pasta"
 
-    update_progress 5 "Portas UDP..."
+    update_progress 6 "Portas UDP..."
     scan_udp_ports "$ip" "$pasta"
 
     scan_advanced_nmap "$ip" "$pasta"
 
-    update_progress 6 "Banners..."
+    update_progress 7 "Banners..."
     grab_banner "$ip" "$pasta"
 
-    update_progress 7 "CVE..."
+    update_progress 8 "CVE..."
     if [ -n "${SERVER_INFO:-}" ] && [ "$SERVER_INFO" != "N/A" ]; then
         local parsed
         parsed=$(parse_server_info "$SERVER_INFO")
@@ -175,72 +182,87 @@ processar_ip() {
         check_cves "N/A" "" "$pasta"
     fi
 
-    update_progress 8 "Whois..."
+    update_progress 9 "Whois..."
     whois_lookup "$ip" "$pasta"
 
     # Soh executa se tivermos dominio
     if [ "$has_domain" -eq 1 ]; then
-        update_progress 9 "DNS..."
+        update_progress 10 "DNS..."
         dns_extras "$dominio" "$pasta"
 
-        update_progress 10 "WHOIS Dom..."
+        update_progress 11 "WHOIS Dom..."
         whois_domain "$dominio" "$pasta"
 
-        update_progress 11 "Subdominios..."
+        update_progress 12 "Subdominios..."
         enumerate_subdomains "$dominio" "$pasta"
 
-        update_progress 12 "RobotsTXT..."
+        update_progress 13 "RobotsTXT..."
         check_robots "$ip" "$dominio" "$pasta"
     fi
 
     if [ "$has_domain" -eq 1 ]; then
-        update_progress 13 "AXFR..."
+        update_progress 14 "AXFR..."
         test_axfr "$dominio" "$pasta"
 
-        update_progress 14 "EmailSec..."
+        update_progress 15 "EmailSec..."
         check_email_security "$dominio" "$pasta"
 
-        update_progress 15 "HttpHeaders..."
+        update_progress 16 "HttpHeaders..."
         check_security_headers "$ip" "$dominio" "$pasta"
 
-        update_progress 16 "VulnTests..."
+        update_progress 17 "VulnTests..."
         run_vuln_tests "$ip" "$dominio" "$pasta"
 
-        update_progress 17 "SSLTest..."
+        update_progress 18 "SSLTest..."
         test_ssl_protocols "$ip" "$dominio" "$pasta"
     else
-        update_progress 9 "HttpHeaders..."
+        update_progress 10 "HttpHeaders..."
         check_security_headers "$ip" "$dominio" "$pasta"
 
-        update_progress 10 "VulnTests..."
+        update_progress 11 "VulnTests..."
         run_vuln_tests "$ip" "$dominio" "$pasta"
 
-        update_progress 11 "SSLTest..."
+        update_progress 12 "SSLTest..."
         test_ssl_protocols "$ip" "$dominio" "$pasta"
     fi
 
     # Ajusta o indice do progresso com base em has_domain
-    local step_net=12
-    local step_reverse=13
-    local step_reverse_dns=14
-    local step_ping=15
-    local step_street=16
-    local step_report=17
-    local step_pdf=18
-    local step_export=19
-    local step_resumo=20
-    local step_notify=21
+    local step_net=13
+    local step_reverse=14
+    local step_reverse_dns=15
+    local step_ping=16
+    local step_street=17
+    local step_contacts=18
+    local step_pwned=19
+    local step_social=20
+    local step_dorks=21
+    local step_earth=22
+    local step_kmz=23
+    local step_report=24
+    local step_pdf=25
+    local step_export=26
+    local step_export_extra=27
+    local step_resumo=28
+    local step_notify=29
     if [ "$has_domain" -eq 1 ]; then
-        step_net=18
-        step_reverse=19
-        step_reverse_dns=20
-        step_ping=21
-        step_street=22
-        step_report=23
-        step_pdf=24
-        step_export=25
-        step_resumo=26
-        step_notify=27
+        step_net=19
+        step_reverse=20
+        step_reverse_dns=21
+        step_ping=22
+        step_street=23
+        step_contacts=24
+        step_pwned=25
+        step_social=26
+        step_dorks=27
+        step_harvester=28
+        step_earth=29
+        step_kmz=30
+        step_report=31
+        step_pdf=32
+        step_export=33
+        step_export_extra=34
+        step_resumo=35
+        step_notify=36
     fi
 
     if [ "$ip_type" = "IPv6" ]; then
@@ -280,6 +302,33 @@ processar_ip() {
     update_progress $step_street "StreetView..."
     get_streetview "$LAT" "$LON" "$pasta"
 
+    update_progress $step_contacts "Contatos..."
+    extract_contacts "$dominio" "$ip" "$pasta"
+
+    update_progress $step_pwned "Pwned..."
+    if [ -n "${EMAIL:-}" ] && [ "${EMAIL}" != "N/A" ] && [ "${EMAIL}" != "null" ]; then
+        check_pwned "$EMAIL" "$pasta"
+    else
+        log_debug "Nenhum email encontrado para verificar vazamentos."
+    fi
+
+    update_progress $step_social "Redes Sociais..."
+    [ "$has_domain" -eq 1 ] && extract_social "$dominio" "$pasta"
+
+    update_progress $step_dorks "Dorks..."
+    generate_dorks "$ip" "$dominio" "$pasta"
+
+    if [ "$has_domain" -eq 1 ]; then
+        update_progress $step_harvester "theHarvester..."
+        run_harvester "$dominio" "$pasta"
+    fi
+
+    update_progress $step_earth "Google Earth..."
+    generate_kml "$ip" "$LAT" "$LON" "$pasta"
+    open_google_earth "$LAT" "$LON"
+
+    update_progress $step_kmz "KMZ..."
+
     [ -n "${SHODAN_API_KEY:-}" ] && query_shodan "$ip" "$pasta"
     [ -n "${CENSYS_API_ID:-}" ] && query_censys "$ip" "$pasta"
     [ "$MODO_MONITOR_ATIVO" -eq 1 ] && check_monitor "$ip" "$pasta"
@@ -293,6 +342,10 @@ processar_ip() {
     update_progress $step_export "Exportando..."
     export_json "$ip" "$pasta"
     export_csv "$ip" "$pasta"
+
+    update_progress $step_export_extra "Extra..."
+    export_markdown "$ip" "$pasta"
+    export_geojson "$ip" "$pasta"
 
     update_progress $step_resumo "Resumo..."
     local cve_count
@@ -344,6 +397,12 @@ SSH: ${SSH_WEAK:-N/A}
 SPF: ${EMAIL_SPOOFABLE:-N/A}
 DMARC: ${EMAIL_DMARC:-N/A}
 Robots Disallow: ${ROBOTS_DISALLOW:-N/A}
+CEP Logradouro: ${CEP_LOGRADOURO:-N/A}
+CEP Bairro: ${CEP_BAIRRO:-N/A}
+CEP Cidade: ${CEP_CIDADE:-N/A}
+CEP Estado: ${CEP_ESTADO:-N/A}
+Vazamentos (Pwned): ${PWNED_COUNT:-0} - ${PWNED_BREACHES:-N/A}
+theHarvester Emails: ${HARVESTER_EMAILS:-N/A}
 EOF
 
     update_progress $step_notify "Notificacao..."

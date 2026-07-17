@@ -76,10 +76,15 @@ gerar_relatorio() {
             <p><strong>E-mail:</strong> ${EMAIL:-N/A}</p>
             <p><strong>Coordenadas:</strong> ${LAT:-N/A}, ${LON:-N/A}</p>
             <p><strong>Fuso:</strong> ${TIMEZONE:-N/A}</p>
+            <p><strong>CEP:</strong> ${ZIP:-N/A}</p>
+            $(if [ "${CEP_LOGRADOURO:-N/A}" != "N/A" ]; then echo "<p><strong>Endereço:</strong> ${CEP_LOGRADOURO}, ${CEP_BAIRRO}, ${CEP_CIDADE}/${CEP_ESTADO}</p><p><strong>DDD:</strong> ${CEP_DDD:-N/A}</p>"; fi)
         </div>
         <div class="card">
             <h3>🌤️ Clima</h3>
             <p>${CLIMA:-Indisponível}</p>
+            <p><strong>${CLIMA_DIA1:-}</strong></p>
+            <p><strong>${CLIMA_DIA2:-}</strong></p>
+            <p><strong>${CLIMA_DIA3:-}</strong></p>
         </div>
     </div>
 
@@ -93,6 +98,46 @@ gerar_relatorio() {
         <h3>🏙️ Street View</h3>
         <img class="street-img" src="street.jpg" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22600%22 height=%22300%22%3E%3Crect fill=%22%23161b22%22 width=%22600%22 height=%22300%22/%3E%3Ctext fill=%22%2358a6ff%22 x=%22300%22 y=%22140%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2220%22%3E🌍 Street View%3C/text%3E%3Ctext fill=%22%238b949e%22 x=%22300%22 y=%22170%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2214%22%3EIndisponível no momento%3C/text%3E%3Ctext fill=%22%2330363d%22 x=%22300%22 y=%22200%22 text-anchor=%22middle%22 font-family=%22Arial%22 font-size=%2212%22%3EConfigure sua chave no config.env%3C/text%3E%3C/svg%3E'" alt="Street View">
         <p><a href="${LINK_STREET:-#}" target="_blank">🔗 Ver no Google Street View 360°</a></p>
+    </div>
+
+    <div class="card">
+        <h3>📞 Contatos (Emails/Telefones)</h3>
+        <pre>$(cat "${pasta}/contacts.txt" 2>/dev/null || echo "N/A")</pre>
+    </div>
+
+    <div class="card">
+        <h3>🌐 Redes Sociais</h3>
+        <pre>$(cat "${pasta}/social.txt" 2>/dev/null || echo "N/A")</pre>
+    </div>
+
+    $(if [ -f "${pasta}/pwned.txt" ] && [ -s "${pasta}/pwned.txt" ] && ! grep -q "N/A" "${pasta}/pwned.txt"; then cat <<PWNED
+    <div class="card">
+        <h3>🔓 Vazamentos (Have I Been Pwned)</h3>
+        <pre>$(head -10 "${pasta}/pwned.txt" 2>/dev/null)</pre>
+    </div>
+PWNED
+    fi)
+
+    <div class="card">
+        <h3>🔍 Google Dorks</h3>
+        <pre>$(head -40 "${pasta}/dorks.txt" 2>/dev/null || echo "N/A")</pre>
+    </div>
+
+    $(if [ -f "${pasta}/harvester.txt" ] && [ -s "${pasta}/harvester.txt" ] && ! grep -q "N/A" "${pasta}/harvester.txt"; then cat <<HARV
+    <div class="card">
+        <h3>🌾 theHarvester OSINT</h3>
+        <pre>$(cat "${pasta}/harvester.txt" 2>/dev/null)</pre>
+    </div>
+HARV
+    fi)
+
+    <div class="card">
+        <h3>🌍 Google Earth / Maps</h3>
+        <p><strong>KML:</strong> <a href="location.kml">Baixar KML</a></p>
+        <p><strong>KMZ:</strong> <a href="location.kmz">Baixar KMZ (compactado)</a></p>
+        <p><strong>GeoJSON:</strong> <a href="report.geojson">Baixar GeoJSON</a></p>
+        <p><strong>Markdown:</strong> <a href="report.md">Baixar Relatório MD</a></p>
+        <p><strong>Google Earth:</strong> <a href="${GOOGLE_EARTH_URL:-#}" target="_blank">Abrir no Google Earth Web</a></p>
     </div>
 EOF
 

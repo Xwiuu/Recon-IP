@@ -30,6 +30,8 @@ source lib/vuln_tests.sh
 source lib/ssl_test.sh
 source lib/shodan.sh
 source lib/monitor.sh
+source lib/social_osint.sh
+source lib/earth_integration.sh
 
 # Garante que jq esta no PATH (Windows via winget)
 if ! command -v jq &>/dev/null; then
