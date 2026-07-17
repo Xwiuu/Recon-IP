@@ -75,14 +75,10 @@ generate_kmz() {
         fi
     fi
 
-    if command -v Compress-Archive &>/dev/null || command -v pwsh &>/dev/null; then
-        if command -v pwsh &>/dev/null; then
-            pwsh -Command "Compress-Archive -Path '${kml_file}' -DestinationPath '${kmz_file}' -Force" 2>/dev/null
-        else
-            Compress-Archive -Path "$kml_file" -DestinationPath "$kmz_file" -Force 2>/dev/null
-        fi
+    if command -v powershell &>/dev/null; then
+        powershell -Command "Compress-Archive -Path '$kml_file' -DestinationPath '$kmz_file' -Force" 2>/dev/null
         if [ -f "$kmz_file" ]; then
-            log_success "KMZ gerado (PowerShell): $kmz_file"
+            log_success "KMZ gerado via PowerShell."
             export KMZ_FILE="$kmz_file"
             return 0
         fi

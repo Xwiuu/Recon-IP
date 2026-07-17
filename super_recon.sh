@@ -91,9 +91,14 @@ modo_servidor() {
     # Limpa capturas anteriores para evitar re-scan
     rm -f captures/last_ip.txt
 
-    if ! command -v php &> /dev/null; then
-        log_error "PHP nao encontrado. Instale: apt install php"
-        exit 1
+    if ! command -v php &>/dev/null; then
+        log_error "PHP não encontrado."
+        log_info "Instale o PHP no Windows:"
+        echo "   choco install php"
+        echo "   winget install PHP"
+        log_info "No Linux: sudo apt install php"
+        tui_msgbox "PHP não instalado.\nInstale e tente novamente." "Erro"
+        return 1
     fi
 
     log_info "Iniciando PHP Server na porta $port..."

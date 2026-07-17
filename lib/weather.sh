@@ -103,11 +103,30 @@ EOF
                 return 0
             fi
         fi
+
+        # ---- 4. FALLBACK 2: por país + região ----
+        if [ -n "$REGION" ] && [ -n "$COUNTRY" ]; then
+            local city_encoded=$(echo "$CITY" | sed 's/ /+/g')
+            curl -s "wttr.in/${city_encoded},${COUNTRY}?format=j1" -o "${pasta}/weather_raw.json"
+            if [ -s "${pasta}/weather_raw.json" ] && grep -q '"current_condition"' "${pasta}/weather_raw.json"; then
+                local t c w h
+                t=$(jq -r '.current_condition[0].temp_C // "N/A"' "${pasta}/weather_raw.json")
+                c=$(jq -r '.current_condition[0].weatherDesc[0].value // "N/A"' "${pasta}/weather_raw.json")
+                w=$(jq -r '.current_condition[0].windspeedKmph // "N/A"' "${pasta}/weather_raw.json")
+                h=$(jq -r '.current_condition[0].humidity // "N/A"' "${pasta}/weather_raw.json")
+                CLIMA="${t}°C ${c} Vento:${w}km/h Umidade:${h}%"
+                CLIMA_DIA1="N/A"; CLIMA_DIA2="N/A"; CLIMA_DIA3="N/A"
+                export CLIMA CLIMA_DIA1 CLIMA_DIA2 CLIMA_DIA3
+                echo "$CLIMA" > "$weather_file"
+                log_success "Clima (região): $CLIMA"
+                return 0
+            fi
+        fi
     else
         log_warning "Sem internet. Clima indisponivel."
     fi
 
-    # ---- 4. FALHA TOTAL ----
+    # ---- 5. FALHA TOTAL ----
     echo "Clima: N/A (API indisponivel)" > "$weather_file"
     CLIMA="N/A"; CLIMA_DIA1="N/A"; CLIMA_DIA2="N/A"; CLIMA_DIA3="N/A"
     export CLIMA CLIMA_DIA1 CLIMA_DIA2 CLIMA_DIA3
