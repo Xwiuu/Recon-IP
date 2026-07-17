@@ -28,6 +28,17 @@ source lib/banners.sh
 source lib/network.sh
 source lib/dns.sh
 source lib/whois_domain.sh
+source lib/export.sh
+source lib/cve.sh
+source lib/dns_axfr.sh
+source lib/security_headers.sh
+source lib/email_security.sh
+source lib/subdomains.sh
+source lib/robots.sh
+source lib/vuln_tests.sh
+source lib/ssl_test.sh
+source lib/shodan.sh
+source lib/monitor.sh
 
 # ========== HELP ==========
 mostrar_help() {
@@ -35,22 +46,32 @@ mostrar_help() {
 SUPERRECON v2.0 - Engrenagem de Reconhecimento OSINT
 
 Uso:
-  ./super_recon.sh                # Modo Link (sobe servidor + túneis)
-  ./super_recon.sh -s <IP>        # Modo Scan manual (analisa um IP)
-  ./super_recon.sh -h             # Mostra esta ajuda
+  ./super_recon.sh                          # Modo Link (sobe servidor + túneis)
+  ./super_recon.sh -s <IP>                  # Modo Scan manual (analisa um IP)
+  ./super_recon.sh --monitor <IP>           # Scan + monitoramento com diff
+  ./super_recon.sh --cron <IP> [intervalo]  # Gera script para cron/agendador
+  ./super_recon.sh --scan-advanced <IP>     # Scan completo + monitor + cron
+  ./super_recon.sh -h                       # Mostra esta ajuda
 
 Modo Link:
   - Gera links com 3 túneis simultâneos (Cloudflared, Ngrok, Loclx)
   - Encurta URLs automaticamente (TinyURL + is.gd)
   - Aguarda vítima clicar e dispara o scan completo
 
-Modo Scan:
-  - Coleta geolocalização, WHOIS, clima
-  - Baixa Street View, gera mapa interativo
-  - Escaneia portas comuns
-  - Banner grabbing (HTTP, SSH, SSL, favicon)
-  - Reconhecimento de rede (/24, traceroute)
-  - Gera relatório HTML e envia notificação
+Modo Scan (Pacote 3):
+  - Geolocalização, WHOIS, clima, Street View, mapa
+  - Port scanning TCP/UDP + nmap avançado (-sV, -O, --script)
+  - Banner grabbing (HTTP, SSH, FTP, SSL, favicon hash)
+  - Reconhecimento de rede (/24, traceroute, reverse IP, reverse DNS)
+  - Subdomínios brute-force (DNS), robots.txt/sitemap.xml
+  - SSL/TLS profundo (TLS 1.0-1.3, POODLE, BEAST, CRIME, cifras fracas)
+  - Testes de vulnerabilidade (Log4j, Heartbleed, Shellshock, SSH)
+  - Security headers (HSTS, CSP, XFO, Permissions-Policy, COEP, COOP, CORP)
+  - Email security (SPF/DKIM/DMARC + análise de spoofing)
+  - Shodan/Censys (opcional, requer chave)
+  - Relatório HTML + PDF + JSON + CSV
+  - Notificações Telegram/Discord
+  - Monitoramento com detecção de alterações
 
 Dependências: php, curl, jq, whois, openssl, dig/host, cloudflared, ngrok, loclx
 EOF
@@ -109,6 +130,33 @@ case "$1" in
             exit 1
         fi
         processar_ip "$2"
+        ;;
+    --monitor)
+        if [ -z "$2" ]; then
+            log_error "IP não fornecido. Use: $0 --monitor <IP>"
+            exit 1
+        fi
+        init_monitor
+        processar_ip "$2"
+        check_monitor "$2" "output/recon_$(echo "$2" | sed 's/:/_/g')"
+        ;;
+    --cron)
+        if [ -z "$2" ]; then
+            log_error "IP não fornecido. Use: $0 --cron <IP> [intervalo]"
+            exit 1
+        fi
+        setup_cron "$2" "$3"
+        ;;
+    --scan-advanced)
+        if [ -z "$2" ]; then
+            log_error "IP não fornecido. Use: $0 --scan-advanced <IP>"
+            exit 1
+        fi
+        init_monitor
+        processar_ip "$2"
+        init_monitor
+        check_monitor "$2" "output/recon_$(echo "$2" | sed 's/:/_/g')"
+        setup_cron "$2" "*/6"
         ;;
     -h|--help)
         mostrar_help

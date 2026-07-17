@@ -211,6 +211,87 @@ done)
         <pre>$(cat "${pasta}/email_security.txt" 2>/dev/null || echo "N/A")</pre>
     </div>
 
+    $(if [ -n "${SUBDOMAIN_COUNT}" ] && [ "${SUBDOMAIN_COUNT}" -gt 0 ] 2>/dev/null; then
+    cat <<SUB
+    <div class="card">
+        <h3>🌐 Subdomínios Encontrados (${SUBDOMAIN_COUNT})</h3>
+        <pre>${SUBDOMAIN_LIST:-Nenhum}</pre>
+    </div>
+SUB
+    fi)
+
+    $(if [ -n "${ROBOTS_DISALLOW}" ] && [ "${ROBOTS_DISALLOW}" != "N/A" ]; then
+    cat <<ROB
+    <div class="card">
+        <h3>🤖 robots.txt Analysis</h3>
+        <p><strong>Disallow:</strong> ${ROBOTS_DISALLOW}</p>
+        <p><strong>Sitemap:</strong> ${ROBOTS_SITEMAP:-N/A}</p>
+        <p><strong>URLs no Sitemap:</strong> ${SITEMAP_COUNT:-0}</p>
+        <pre>$(head -c 1000 "${pasta}/robots_raw.txt" 2>/dev/null || echo "N/A")</pre>
+    </div>
+ROB
+    fi)
+
+    $(if { [ -n "${LOG4J_VULN}" ] && [ "${LOG4J_VULN}" != "N/A" ] && [ "${LOG4J_VULN}" != "Nao testado" ]; } || \
+       { [ -n "${HEARTBLEED_VULN}" ] && [ "${HEARTBLEED_VULN}" != "N/A" ] && [ "${HEARTBLEED_VULN}" != "Nao testado" ]; } || \
+       { [ -n "${SHELLSHOCK_VULN}" ] && [ "${SHELLSHOCK_VULN}" != "N/A" ] && [ "${SHELLSHOCK_VULN}" != "Nao testado" ]; } || \
+       { [ -n "${SSH_WEAK}" ] && [ "${SSH_WEAK}" != "N/A" ] && [ "${SSH_WEAK}" != "Nao testado" ]; }; then
+    cat <<VULN
+    <div class="card">
+        <h3>💥 Testes de Vulnerabilidade</h3>
+        <p><strong>Log4j (CVE-2021-44228):</strong> ${LOG4J_VULN:-N/A}</p>
+        <p><strong>Heartbleed (CVE-2014-0160):</strong> ${HEARTBLEED_VULN:-N/A}</p>
+        <p><strong>Shellshock (CVE-2014-6271):</strong> ${SHELLSHOCK_VULN:-N/A}</p>
+        <p><strong>SSH Weak Ciphers:</strong> ${SSH_WEAK:-N/A}</p>
+    </div>
+VULN
+    fi)
+
+    $(if { [ -n "${SSL_TLS10}" ] && [ "${SSL_TLS10}" != "N/A" ]; } || \
+       { [ -n "${SSL_TLS11}" ] && [ "${SSL_TLS11}" != "N/A" ]; } || \
+       { [ -n "${SSL_TLS12}" ] && [ "${SSL_TLS12}" != "N/A" ]; }; then
+    cat <<SSL
+    <div class="card">
+        <h3>🔐 Teste SSL/TLS</h3>
+        <p><strong>TLS 1.0:</strong> <span class="$(echo "${SSL_TLS10}" | grep -qi "inseguro" && echo "badge-red" || echo "badge-green")">${SSL_TLS10}</span></p>
+        <p><strong>TLS 1.1:</strong> <span class="$(echo "${SSL_TLS11}" | grep -qi "inseguro" && echo "badge-red" || echo "badge-green")">${SSL_TLS11}</span></p>
+        <p><strong>TLS 1.2:</strong> ${SSL_TLS12}</p>
+        <p><strong>TLS 1.3:</strong> ${SSL_TLS13}</p>
+        <p><strong>POODLE:</strong> <span class="$(echo "${SSL_POODLE}" | grep -qi "vulneravel" && echo "badge-red" || echo "badge-green")">${SSL_POODLE}</span></p>
+        <p><strong>BEAST:</strong> <span class="$(echo "${SSL_BEAST}" | grep -qi "vulneravel" && echo "badge-red" || echo "badge-green")">${SSL_BEAST}</span></p>
+        <p><strong>CRIME:</strong> <span class="$(echo "${SSL_CRIME}" | grep -qi "vulneravel" && echo "badge-red" || echo "badge-green")">${SSL_CRIME}</span></p>
+        <p><strong>Cifras Fracas:</strong> ${SSL_WEAK_CIPHERS}</p>
+    </div>
+SSL
+    fi)
+
+    $(if [ -n "${PTR_RECORD}" ] && [ "${PTR_RECORD}" != "N/A" ]; then
+    cat <<PTR
+    <div class="card">
+        <h3>🔍 Reverse DNS (PTR)</h3>
+        <p><strong>Nome do Host:</strong> ${PTR_RECORD}</p>
+    </div>
+PTR
+    fi)
+
+    $(if [ -n "${SHODAN_DATA}" ] && [ "${SHODAN_DATA}" != "N/A" ]; then
+    cat <<SHO
+    <div class="card">
+        <h3>🌍 Shodan Intelligence</h3>
+        <pre>$(cat "${pasta}/shodan.txt" 2>/dev/null | head -20)</pre>
+    </div>
+SHO
+    fi)
+
+    $(if [ "${MONITOR_CHANGED:-0}" -eq 1 ]; then
+    cat <<MON
+    <div class="card">
+        <h3>🔄 Monitoramento - Alterações Detectadas</h3>
+        <pre>${MONITOR_CHANGES:-N/A}</pre>
+    </div>
+MON
+    fi)
+
     <div class="footer">
         ⚙️ Gerado por ReconIP v2.0 em $(formatar_data)
     </div>
@@ -230,4 +311,42 @@ EOF
     else
         log_info "Abra manualmente: ${pasta}/report.html"
     fi
+}
+
+generate_pdf() {
+    local pasta=$1
+    local html_file="${pasta}/report.html"
+    local pdf_file="${pasta}/report.pdf"
+
+    PDF_GENERATED="N/A"
+
+    if [ ! -f "$html_file" ]; then
+        return
+    fi
+
+    if command -v pandoc &>/dev/null; then
+        log_info "Gerando PDF com pandoc..."
+        pandoc "$html_file" -o "$pdf_file" --pdf-engine=weasyprint 2>/dev/null || \
+        pandoc "$html_file" -o "$pdf_file" --pdf-engine=wkhtmltopdf 2>/dev/null || \
+        pandoc "$html_file" -o "$pdf_file" -f html -t pdf 2>/dev/null
+        if [ -f "$pdf_file" ] && [ -s "$pdf_file" ]; then
+            PDF_GENERATED="$pdf_file"
+            log_success "PDF gerado: $pdf_file"
+        else
+            log_warning "Falha ao gerar PDF com pandoc"
+        fi
+    elif command -v wkhtmltopdf &>/dev/null; then
+        log_info "Gerando PDF com wkhtmltopdf..."
+        wkhtmltopdf "$html_file" "$pdf_file" 2>/dev/null
+        if [ -f "$pdf_file" ] && [ -s "$pdf_file" ]; then
+            PDF_GENERATED="$pdf_file"
+            log_success "PDF gerado: $pdf_file"
+        else
+            log_warning "Falha ao gerar PDF com wkhtmltopdf"
+        fi
+    else
+        log_info "PDF nao gerado (pandoc/wkhtmltopdf nao disponiveis)"
+    fi
+
+    export PDF_GENERATED
 }

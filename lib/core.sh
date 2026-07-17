@@ -138,9 +138,9 @@ processar_ip() {
     [ -n "$dominio" ] && has_domain=1
 
     if [ "$has_domain" -eq 1 ]; then
-        init_progress "GeoIP" "IPInfo" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "DNS" "WHOIS Dom" "AXFR" "EmailSec" "HttpHeaders" "Rede" "Ping" "StreetView" "Relatorio" "Export" "Resumo" "Notificacao"
+        init_progress "GeoIP" "IPInfo" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "DNS" "WHOIS Dom" "Subdominios" "RobotsTXT" "AXFR" "EmailSec" "HttpHeaders" "VulnTests" "SSLTest" "Rede" "ReverseIP" "ReverseDNS" "Ping" "StreetView" "Relatorio" "PDF" "Export" "Resumo" "Notificacao"
     else
-        init_progress "GeoIP" "IPInfo" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "HttpHeaders" "Rede" "Ping" "StreetView" "Relatorio" "Export" "Resumo" "Notificacao"
+        init_progress "GeoIP" "IPInfo" "Clima" "Portas" "UDP" "Banners" "CVE" "Whois" "HttpHeaders" "VulnTests" "SSLTest" "Rede" "ReverseIP" "ReverseDNS" "Ping" "StreetView" "Relatorio" "PDF" "Export" "Resumo" "Notificacao"
     fi
 
     update_progress 1 "GeoIP..."
@@ -158,6 +158,8 @@ processar_ip() {
 
     update_progress 5 "Portas UDP..."
     scan_udp_ports "$ip" "$pasta"
+
+    scan_advanced_nmap "$ip" "$pasta"
 
     update_progress 6 "Banners..."
     grab_banner "$ip" "$pasta"
@@ -183,41 +185,62 @@ processar_ip() {
 
         update_progress 10 "WHOIS Dom..."
         whois_domain "$dominio" "$pasta"
+
+        update_progress 11 "Subdominios..."
+        enumerate_subdomains "$dominio" "$pasta"
+
+        update_progress 12 "RobotsTXT..."
+        check_robots "$ip" "$dominio" "$pasta"
     fi
 
-    # --- NOVAS FUNCIONALIDADES (PACOTE 2) ---
     if [ "$has_domain" -eq 1 ]; then
-        update_progress 11 "AXFR..."
+        update_progress 13 "AXFR..."
         test_axfr "$dominio" "$pasta"
 
-        update_progress 12 "EmailSec..."
+        update_progress 14 "EmailSec..."
         check_email_security "$dominio" "$pasta"
 
-        update_progress 13 "HttpHeaders..."
+        update_progress 15 "HttpHeaders..."
         check_security_headers "$ip" "$dominio" "$pasta"
+
+        update_progress 16 "VulnTests..."
+        run_vuln_tests "$ip" "$dominio" "$pasta"
+
+        update_progress 17 "SSLTest..."
+        test_ssl_protocols "$ip" "$dominio" "$pasta"
     else
         update_progress 9 "HttpHeaders..."
         check_security_headers "$ip" "$dominio" "$pasta"
+
+        update_progress 10 "VulnTests..."
+        run_vuln_tests "$ip" "$dominio" "$pasta"
+
+        update_progress 11 "SSLTest..."
+        test_ssl_protocols "$ip" "$dominio" "$pasta"
     fi
 
     # Ajusta o indice do progresso com base em has_domain
-    local step_net=10
-    local step_reverse=11
-    local step_ping=12
-    local step_street=13
-    local step_report=14
-    local step_export=15
-    local step_resumo=16
-    local step_notify=17
+    local step_net=12
+    local step_reverse=13
+    local step_reverse_dns=14
+    local step_ping=15
+    local step_street=16
+    local step_report=17
+    local step_pdf=18
+    local step_export=19
+    local step_resumo=20
+    local step_notify=21
     if [ "$has_domain" -eq 1 ]; then
-        step_net=14
-        step_reverse=15
-        step_ping=16
-        step_street=17
-        step_report=18
-        step_export=19
-        step_resumo=20
-        step_notify=21
+        step_net=18
+        step_reverse=19
+        step_reverse_dns=20
+        step_ping=21
+        step_street=22
+        step_report=23
+        step_pdf=24
+        step_export=25
+        step_resumo=26
+        step_notify=27
     fi
 
     if [ "$ip_type" = "IPv6" ]; then
@@ -231,6 +254,9 @@ processar_ip() {
 
         update_progress $step_reverse "Reverse IP..."
         reverse_ip_lookup "$ip" "$pasta"
+
+        update_progress $step_reverse_dns "Reverse DNS..."
+        reverse_dns_lookup "$ip" "$pasta"
     fi
 
     # Fallback ASN do whois_api.json (se geo.json nao tiver)
@@ -254,8 +280,15 @@ processar_ip() {
     update_progress $step_street "StreetView..."
     get_streetview "$LAT" "$LON" "$pasta"
 
+    [ -n "${SHODAN_API_KEY:-}" ] && query_shodan "$ip" "$pasta"
+    [ -n "${CENSYS_API_ID:-}" ] && query_censys "$ip" "$pasta"
+    [ "$MODO_MONITOR_ATIVO" -eq 1 ] && check_monitor "$ip" "$pasta"
+
     update_progress $step_report "Relatorio..."
     gerar_relatorio "$ip" "$pasta"
+
+    update_progress $step_pdf "PDF..."
+    generate_pdf "$pasta"
 
     update_progress $step_export "Exportando..."
     export_json "$ip" "$pasta"
@@ -294,6 +327,23 @@ DNS IPv6: ${DNS_IPV6:-N/A}
 HTTPS: ${HTTPS_STATUS:-N/A}
 UDP Abertas: ${udp_ports:-N/A}
 CVEs Encontrados: ${cve_count:-0}
+Subdominios: ${SUBDOMAIN_COUNT:-0}
+PTR: ${PTR_RECORD:-N/A}
+TLS 1.0: ${SSL_TLS10:-N/A}
+TLS 1.1: ${SSL_TLS11:-N/A}
+TLS 1.2: ${SSL_TLS12:-N/A}
+TLS 1.3: ${SSL_TLS13:-N/A}
+POODLE: ${SSL_POODLE:-N/A}
+BEAST: ${SSL_BEAST:-N/A}
+CRIME: ${SSL_CRIME:-N/A}
+Cifras Fracas: ${SSL_WEAK_CIPHERS:-N/A}
+Log4j: ${LOG4J_VULN:-N/A}
+Heartbleed: ${HEARTBLEED_VULN:-N/A}
+Shellshock: ${SHELLSHOCK_VULN:-N/A}
+SSH: ${SSH_WEAK:-N/A}
+SPF: ${EMAIL_SPOOFABLE:-N/A}
+DMARC: ${EMAIL_DMARC:-N/A}
+Robots Disallow: ${ROBOTS_DISALLOW:-N/A}
 EOF
 
     update_progress $step_notify "Notificacao..."

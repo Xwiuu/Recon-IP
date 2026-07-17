@@ -24,6 +24,12 @@ source lib/cve.sh
 source lib/dns_axfr.sh
 source lib/security_headers.sh
 source lib/email_security.sh
+source lib/subdomains.sh
+source lib/robots.sh
+source lib/vuln_tests.sh
+source lib/ssl_test.sh
+source lib/shodan.sh
+source lib/monitor.sh
 
 # Garante que jq esta no PATH (Windows via winget)
 if ! command -v jq &>/dev/null; then

@@ -55,6 +55,37 @@ dns_extras() {
     log_success "Registros DNS coletados."
 }
 
+# ========== REVERSE DNS (PTR) ==========
+reverse_dns_lookup() {
+    local ip=$1
+    local pasta=$2
+    local ptr_file="${pasta}/reverse_dns.txt"
+
+    PTR_RECORD="N/A"
+
+    log_info "Consultando registro PTR (reverse DNS) para $ip..."
+
+    local ptr=""
+    if command -v nslookup &>/dev/null; then
+        ptr=$(nslookup "$ip" 2>/dev/null | grep -E '^Name:' | awk '{print $NF}' | head -1)
+    elif command -v host &>/dev/null; then
+        ptr=$(host "$ip" 2>/dev/null | grep 'domain name pointer' | head -1 | awk '{print $NF}' | sed 's/\.$//')
+    elif command -v dig &>/dev/null; then
+        ptr=$(dig +short -x "$ip" 2>/dev/null | head -1)
+    fi
+
+    if [ -n "$ptr" ]; then
+        PTR_RECORD="$ptr"
+        echo "PTR: $ptr" > "$ptr_file"
+        log_success "Reverse DNS: $ptr"
+    else
+        echo "PTR: Nao encontrado" > "$ptr_file"
+        log_info "Reverse DNS: sem registro PTR para $ip"
+    fi
+
+    export PTR_RECORD
+}
+
 ping_domain() {
     local dominio=$1
     local pasta=$2
